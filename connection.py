@@ -1,26 +1,37 @@
-#gemini flash connetcion
 # connection.py
-# Gemini Flash connection (CrewAI)
-
 import os
 from crewai import LLM
 from dotenv import load_dotenv
 
-# Load .env file (if exists)
-load_dotenv()
+class Connection:
+    def __init__(self):
+        load_dotenv()
+        self.provider = os.getenv("LLM_PROVIDER", "gemini")  # 'gemini' or 'openai'
+        self.api_key = os.getenv("GEMINI_API_KEY") if self.provider == "gemini" else os.getenv("OPENAI_API_KEY")
 
-# Ensure the key is set
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+        if not self.api_key:
+            raise ValueError(f"API key not found for provider {self.provider}")
 
-if not GEMINI_API_KEY:
-    raise ValueError("GEMINI_API_KEY not found in environment or .env file")
+        if self.provider == "gemini":
+            os.environ["GEMINI_API_KEY"] = self.api_key
+        elif self.provider == "openai":
+            os.environ["OPENAI_API_KEY"] = self.api_key
+        else:
+            raise ValueError(f"Unsupported provider: {self.provider}")
 
-# Set the env variable for CrewAI
-os.environ["GEMINI_API_KEY"] = GEMINI_API_KEY
+        self.llm = None
 
-# Initialize LLM
-llm = LLM(model="gemini/gemini-2.0-flash", provider="google")
+    def get_llm(self):
+        if not self.llm:
+            if self.provider == "gemini":
+                self.llm = LLM(model="gemini/gemini-2.0-flash", provider="google")
+            elif self.provider == "openai":
+                self.llm = LLM(model="gpt-4o-mini", provider="openai")
+        return self.llm
 
-# Quick test
 if __name__ == "__main__":
-    print(llm.call("Say hello!"))
+    connection = Connection()
+    llm = connection.get_llm()
+    response = llm.call("Say hello!")
+    print("✅ Successfully connected to LLM!")
+    print("Response:", response)
