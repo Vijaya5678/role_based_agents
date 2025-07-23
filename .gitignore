@@ -1,1 +1,86 @@
 venv/
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+.venv/
+.env/
+ENV/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# VS Code settings
+.vscode/
+
+# macOS files
+.DS_Store
+
+# PyCharm settings
+.idea/
+
+# Python egg files
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+bin/
+var/
+sdist/
+develop-eggs/
+
+# pip wheel
+*.whl
+
+# Distribution / packaging
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+.pytest_cache/
+
+# mypy / Pylint / pyright / coverage
+.mypy_cache/
+.pytype/
+.pyright/
+coverage.xml
+
+# dotenv and config files
+.env
+.env.*
+*.yaml
+*.yml
+*.toml
+
+# SQLite DBs
+*.sqlite3
+
+# Logs
+*.log
+
+# Others
+*.bak
+*.swp
+*~
+
+# If using notebooks and don't want to commit outputs
+*.ipynb
+
+# If using AWS credentials or similar
+.aws/
