@@ -1,147 +1,167 @@
-# mentor/core/engine/mentor_engine.py
-
-import os
 import json
 import re
-from crewai import LLM
-from datetime import datetime
-from typing import Optional
-from crewai import Crew, Task
-from mentor.core.agent.mentor_agent import create_mentor_agent
-from connection import Connection
+from typing import Optional, Tuple, List
 
-
-def safe_filename(title: str, max_length=100) -> str:
-    safe_title = re.sub(r'[<>:"/\\|?*]', '', title)
-    safe_title = safe_title.replace(" ", "_")
-    if len(safe_title) > max_length:
-        safe_title = safe_title[:max_length] + "..."
-    return safe_title
+from connection import Connection  # Your existing connection to get LLM
 
 
 class MentorEngine:
     def __init__(self):
-        conn = Connection()
-        self.llm = conn.get_llm()
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        self.chat_dir = os.path.abspath(os.path.join(base_dir, "../../../data/chats"))
-        os.makedirs(self.chat_dir, exist_ok=True)
+        try:
+            conn = Connection()
+            self.llm = conn.get_llm()
+            if not self.llm:
+                raise ValueError("LLM not initialized by Connection. Please check Connection class.")
+        except Exception as e:
+            print(f"Error initializing LLM in MentorEngine: {e}")
+            raise
 
-    def save_chat(self, user_id: str, convo_title: str, messages: list):
-        safe_title = safe_filename(convo_title)
-        filename = os.path.join(self.chat_dir, f"{user_id}_{safe_title}.json")
-        chat_data = {
-            "user_id": user_id,
-            "title": convo_title,
-            "messages": messages,
-            "last_updated": datetime.utcnow().isoformat()
-        }
-        with open(filename, "w", encoding="utf-8") as f:
-            json.dump(chat_data, f, indent=2)
+    def safe_filename(self, title: str) -> str:
+        safe_title = re.sub(r'[^\w\s-]', '', title).strip()
+        safe_title = re.sub(r'[-\s]+', '-', safe_title)
+        return safe_title[:50]
 
-    def load_chat(self, user_id: str, convo_title: str):
-        safe_title = safe_filename(convo_title)
-        filename = os.path.join(self.chat_dir, f"{user_id}_{safe_title}.json")
-        if not os.path.exists(filename):
-            return None
-        with open(filename, "r", encoding="utf-8") as f:
-            return json.load(f)
-
-    def list_chats(self, user_id: str):
-        if not os.path.exists(self.chat_dir):
-            return []
-        files = os.listdir(self.chat_dir)
-        user_chats = [f for f in files if f.startswith(user_id + "_") and f.endswith(".json")]
-        return [f[len(user_id)+1:-5].replace("_", " ") for f in user_chats]
-
-    def generate_intro_and_topics(self, learning_desc: str) -> str:
-        prompt = f"""
-                    You are a friendly, interactive AI mentor.
-
-                    A learner said: "{learning_desc}"
-
-                    1. Greet warmly.
-                    2. Acknowledge the learning goal.
-                    3. List 4-6 key subtopics you will teach as bullet points.
-                    4. Invite them to start the session with a warm question.
-
-                    Use clear, encouraging language.
-"""
-        
-        
-        gemini_api_key = "AIzaSyA5CJMIV4zAxbNDn6jiL4G3Rgl_v5yCBYo"
-
-        llm = LLM(model="gemini/gemini-2.5-flash", provider="google")
-        response = llm.call(prompt)
-        return response
-        
-
-    def generate_role_goal_backstory(self, topic: str):
-        role = "Mentor AI Agent"
-        goal = f"Help user learn about {topic}."
-        backstory = f"You are a mentor AI helping a learner understand {topic} deeply with explanations, questions, and guidance."
-        return role, goal, backstory
-
-    def chat_with_agent(self, user_id: str, convo_title: str, user_message: str):
-        chat_data = self.load_chat(user_id, convo_title)
-        if chat_data is None:
-            raise ValueError(f"No chat found for user '{user_id}' with title '{convo_title}'")
-
-        messages = chat_data.get("messages", [])
-        messages.append({"role": "user", "content": user_message})
-
-        base_title = convo_title.split(" - ")[0]
-        topic = base_title.replace("Learning ", "")
-
-        role, goal, backstory = self.generate_role_goal_backstory(topic)
-        mentor_agent = create_mentor_agent(self.llm, role, goal, backstory)
-
-        conversation_text = ""
-        for m in messages:
-            conversation_text += f"{m['role'].capitalize()}: {m['content']}\n"
-
-        task_prompt = f"Continue this conversation:\n{conversation_text}Mentor:"
-
-        task = Task(
-            description="Generate mentor reply",
-            agent=mentor_agent,
-            function_args={"tool_input": task_prompt},
-            expected_output="Text reply continuing the conversation",
-            output_key="mentor_reply"
+    def generate_intro_and_topics(self, context_description: str, extra_instructions: Optional[str] = None) -> Tuple[str, List[str]]:
+        instructions_clause = f"{extra_instructions}\n\n" if extra_instructions else ""
+        default_behavior = (
+            "You are a mentor who is very interactive. "
+            "Ask questions, quiz the user, summarize lessons, and check understanding. "
+            "Provide a friendly introduction and a list of key topics to learn."
         )
 
-        crew = Crew(agents=[mentor_agent], tasks=[task], verbose=True)
-        result = crew.kickoff()
-        agent_reply = result.raw.strip()
+        prompt = f"""
+As an interactive AI mentor, create a warm introduction and propose key topics for the learner.
+{instructions_clause}
+{default_behavior}
 
-        messages.append({"role": "mentor", "content": agent_reply})
-        self.save_chat(user_id, convo_title, messages)
+Learner context:
+{context_description}
 
-        return agent_reply, messages
+Your response MUST be in the following JSON format:
+{{
+  "introduction": "Your friendly and encouraging introductory message.",
+  "topics": [
+    "Topic 1: ...",
+    "Topic 2: ...",
+    "..."
+  ]
+}}
+"""
+        try:
+            response_text = self.llm.call(prompt)
 
-    def launch_mentor_session(
+            cleaned_response_text = response_text.strip()
+            if cleaned_response_text.startswith("```json"):
+                cleaned_response_text = cleaned_response_text[len("```json"):].strip()
+                if cleaned_response_text.endswith("```"):
+                    cleaned_response_text = cleaned_response_text[:-len("```")].strip()
+
+            parsed_response = json.loads(cleaned_response_text)
+            intro = parsed_response.get("introduction", "Welcome! Let's start learning together.")
+            topics = parsed_response.get("topics", ["Introduction", "Key Concepts", "Next Steps"])
+
+            if not isinstance(topics, list) or not all(isinstance(t, str) for t in topics):
+                topics = ["Introduction", "Key Concepts", "Next Steps"]
+
+            # Clean topics: remove numbering like "Topic 1:" prefix if present
+            cleaned_topics = []
+            for t in topics:
+                cleaned = re.sub(r"^Topic \d+:\s*", "", t, flags=re.I).strip()
+                cleaned_topics.append(cleaned)
+
+            return intro, cleaned_topics
+
+        except Exception as e:
+            print(f"Error generating intro and topics: {e}")
+            fallback_intro = "Hello! I'm your AI mentor, ready to guide you on your journey."
+            fallback_topics = ["Introduction", "Core Concepts", "Advanced Topics"]
+            return fallback_intro, fallback_topics
+
+    def chat(
         self,
+        chat_history: List[dict],
         user_id: str,
-        learning_description: str,
-        user_message: Optional[str] = None,
-        custom_title: Optional[str] = None
-    ):
-        title = custom_title if custom_title else f"Learning {learning_description.strip()}"
-        chat_data = self.load_chat(user_id, title)
+        mentor_topics: Optional[List[str]] = None,
+        current_topic: Optional[str] = None,
+        completed_topics: Optional[List[str]] = None,
+    ) -> str:
+        """
+        Generate mentor reply, enforcing sequential topic learning.
+        - chat_history: full conversation so far, latest user message last
+        - mentor_topics: full list of mentor topics in order
+        - current_topic: the topic currently being taught
+        - completed_topics: topics already completed
+        """
 
-        if chat_data is None:
-            messages = []
-            intro = self.generate_intro_and_topics(learning_description)
-            messages.append({"role": "mentor", "content": intro})
-            if user_message:
-                messages.append({"role": "user", "content": user_message})
-                agent_reply, messages = self.chat_with_agent(user_id, title, user_message)
-            self.save_chat(user_id, title, messages)
-            return title, messages, intro
-        else:
-            messages = chat_data.get("messages", [])
-            if user_message:
-                agent_reply, messages = self.chat_with_agent(user_id, title, user_message)
-                return title, messages, agent_reply
+        if not chat_history:
+            return "Hello! How can I assist you today?"
+
+        user_latest_message = chat_history[-1]["content"]
+
+        # Basic validation
+        if mentor_topics is None:
+            mentor_topics = []
+        if completed_topics is None:
+            completed_topics = []
+
+        # Default to first topic if current_topic not set
+        if current_topic is None and mentor_topics:
+            current_topic = mentor_topics[0]
+
+        # Check if user is trying to jump ahead
+        def user_mentions_topic(topic: str) -> bool:
+            # crude check: topic name substring in message, case insensitive
+            return topic.lower() in user_latest_message.lower()
+
+        if mentor_topics and current_topic:
+            current_index = mentor_topics.index(current_topic) if current_topic in mentor_topics else -1
+
+            # Check for user mention of any future topic (after current)
+            for future_index in range(current_index + 1, len(mentor_topics)):
+                future_topic = mentor_topics[future_index]
+                if user_mentions_topic(future_topic):
+                    # User tries to skip ahead
+                    return (
+                        f"I see you're curious about **{future_topic}**, but let's make sure we've covered "
+                        f"**{current_topic}** first. Would you like me to summarize the current topic or answer questions on it before moving on? "
+                        "Or do you want to skip ahead anyway?"
+                    )
+
+            # If user mentions a previous topic that is completed, encourage reviewing or moving forward
+            for past_index in range(0, current_index):
+                past_topic = mentor_topics[past_index]
+                if user_mentions_topic(past_topic) and past_topic not in completed_topics:
+                    return (
+                        f"It looks like you want to revisit **{past_topic}**, which we haven't marked as completed yet. "
+                        f"Would you like me to review it with you?"
+                    )
+
+        # Build prompt to the LLM to generate focused teaching on current topic
+
+        # Assemble conversation context for LLM prompt
+        conversation_text = ""
+        for msg in chat_history:
+            role = msg["role"]
+            content = msg["content"]
+            if role == "user":
+                conversation_text += f"User: {content}\n"
             else:
-                return title, messages, messages[-1]["content"] if messages else ""
+                conversation_text += f"Mentor: {content}\n"
+
+        prompt = f"""
+You are an interactive AI mentor focused on teaching the topic: "{current_topic}".
+
+Be engaging, ask questions, quiz the user, summarize lessons, and check understanding.
+
+Conversation so far:
+{conversation_text}
+
+Please respond as a friendly mentor, focused only on the current topic "{current_topic}".
+"""
+
+        try:
+            mentor_reply = self.llm.call(prompt)
+            return mentor_reply.strip()
+        except Exception as e:
+            print(f"Error generating mentor reply: {e}")
+            return "Sorry, I encountered a problem generating a response. Could you please try rephrasing?"

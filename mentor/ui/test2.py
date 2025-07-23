@@ -24,7 +24,7 @@ st.markdown("""
 
 def rerun_app():
     st.session_state["refresh_counter"] = st.session_state.get("refresh_counter", 0) + 1
-    st.rerun()
+    st.experimental_rerun()
 
 # Session state initialization
 if "authenticated" not in st.session_state:
@@ -117,7 +117,6 @@ if st.session_state.show_new_session_ui and not st.session_state.current_chat_ti
     st.markdown("## Your Learning Journey Starts Here!")
     st.markdown("Tell your AI Mentor what you're excited to learn about today.")
 
-    # New UI: Skill selection, difficulty, and user role
     predefined_skills = ["Python", "Data Science", "Web Development", "Machine Learning", "Cybersecurity"]
     selected_skills = st.multiselect("Choose your skills or interests:", predefined_skills)
     custom_skills = st.text_input("Other skills you'd like to add:", placeholder="e.g., Prompt Engineering, SQL")
@@ -174,19 +173,22 @@ if st.session_state.show_new_session_ui and not st.session_state.current_chat_ti
         rerun_app()
     st.stop()
 
-# (remaining session/chat UI continues unchanged)
-# [...]
 # --- Chat UI and Messaging ---
 
 chat_container = st.container()
 with chat_container:
     for message in st.session_state.chat_history:
         if message["role"] == "user":
-            st.markdown(f"<div style='text-align: right; color: black; background-color: #dcf8c6; padding: 10px; border-radius: 8px; margin: 5px 0;'>{message['content']}</div>", unsafe_allow_html=True)
+            st.markdown(
+                f"<div style='text-align: right; color: black; background-color: #dcf8c6; padding: 10px; border-radius: 8px; margin: 5px 0;'>{message['content']}</div>",
+                unsafe_allow_html=True,
+            )
         else:
-            st.markdown(f"<div style='text-align: left; color: black; background-color: #f1f0f0; padding: 10px; border-radius: 8px; margin: 5px 0;'>{message['content']}</div>", unsafe_allow_html=True)
+            st.markdown(
+                f"<div style='text-align: left; color: black; background-color: #f1f0f0; padding: 10px; border-radius: 8px; margin: 5px 0;'>{message['content']}</div>",
+                unsafe_allow_html=True,
+            )
 
-# --- Input box ---
 st.markdown("---")
 user_input = st.text_input("Type your message:", value=st.session_state.input_message, key="input_message_box", placeholder="Ask your mentor a question...", label_visibility="collapsed")
 
