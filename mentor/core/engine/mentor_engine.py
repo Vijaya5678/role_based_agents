@@ -26,11 +26,17 @@ class MentorEngine:
         default_behavior = (
             "You are a mentor who is very interactive. "
             "Ask questions, quiz the user, summarize lessons, and check understanding. "
-            "Provide a friendly introduction and a list of key topics to learn."
         )
 
+        # *** REVISED PROMPT: LLM provides components, Python code constructs full message ***
         prompt = f"""
-As an interactive AI mentor, create a warm introduction and propose key topics for the learner.
+As an interactive AI mentor, provide the following components for a learner's introduction:
+1.  A warm, brief, and catchy opening greeting.
+2.  A list of key topic titles for the learning journey. These should be concise.
+3.  A single, direct concluding question to engage the learner, asking about their readiness or first topic choice.
+
+Do NOT provide any markdown formatting (like bolding, bullet points, or extra descriptions) for the topic titles within the JSON output, other than the list structure itself.
+
 {instructions_clause}
 {default_behavior}
 
@@ -39,13 +45,15 @@ Learner context:
 
 Your response MUST be in the following JSON format:
 {{
-  "introduction": "Your friendly and encouraging introductory message.",
+  "greeting": "Your friendly and encouraging short introductory message.",
   "topics": [
-    "Topic 1: ...",
-    "Topic 2: ...",
+    "Topic 1 Title",
+    "Topic 2 Title",
     "..."
-  ]
+  ],
+  "concluding_question": "Your single, direct concluding question."
 }}
+Ensure 'topics' contains only the exact topic titles as strings.
 """
         try:
             response_text = self.llm.call(prompt)
@@ -57,26 +65,37 @@ Your response MUST be in the following JSON format:
                     cleaned_response_text = cleaned_response_text[:-len("```")].strip()
 
             parsed_response = json.loads(cleaned_response_text)
-            intro = parsed_response.get("introduction", "Welcome! Let's start learning together.")
-            topics = parsed_response.get("topics", ["Introduction", "Key Concepts", "Next Steps"])
 
-            if not isinstance(topics, list) or not all(isinstance(t, str) for t in topics):
-                topics = ["Introduction", "Key Concepts", "Next Steps"]
+            greeting = parsed_response.get("greeting", "Hello there!")
+            topics_for_internal_use = parsed_response.get("topics", ["Introduction", "Key Concepts", "Next Steps"])
+            concluding_question = parsed_response.get("concluding_question", "Ready to begin?")
 
-            # Clean topics: remove numbering like "Topic 1:" prefix if present
-            cleaned_topics = []
-            for t in topics:
-                cleaned = re.sub(r"^Topic \d+:\s*", "", t, flags=re.I).strip()
-                cleaned_topics.append(cleaned)
+            if not isinstance(topics_for_internal_use, list) or not all(isinstance(t, str) for t in topics_for_internal_use):
+                topics_for_internal_use = ["Introduction", "Key Concepts", "Next Steps"]
 
-            return intro, cleaned_topics
+            # *** MANUALLY CONSTRUCT THE FINAL MESSAGE HERE ***
+            topics_formatted_list = "\n- " + "\n- ".join(topics_for_internal_use)
+            intro_and_topics_message = (
+                f"{greeting}\n\n"
+            )
+
+            return intro_and_topics_message, topics_for_internal_use
 
         except Exception as e:
             print(f"Error generating intro and topics: {e}")
-            fallback_intro = "Hello! I'm your AI mentor, ready to guide you on your journey."
-            fallback_topics = ["Introduction", "Core Concepts", "Advanced Topics"]
-            return fallback_intro, fallback_topics
+            fallback_intro_message = (
+                "Hello! I'm your AI mentor, ready to guide you on your journey.\n\n"
+                "Here are some topics we can explore:\n"
+                "- Introduction\n"
+                "- Core Concepts\n"
+                "- Advanced Topics\n\n"
+                "Ready to begin?"
+            )
+            fallback_topics_list = ["Introduction", "Core Concepts", "Advanced Topics"]
+            return fallback_intro_message, fallback_topics_list
 
+    # The rest of your MentorEngine class (the chat method, etc.) remains unchanged.
+    # ...
     def chat(
         self,
         chat_history: List[dict],
@@ -152,6 +171,7 @@ Your response MUST be in the following JSON format:
 You are an interactive AI mentor focused on teaching the topic: "{current_topic}".
 
 Be engaging, ask questions, quiz the user, summarize lessons, and check understanding.
+Keep your responses concise and directly address the user's last message while staying on topic.
 
 Conversation so far:
 {conversation_text}
