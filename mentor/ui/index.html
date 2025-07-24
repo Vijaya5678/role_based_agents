@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Mentor Me</title> <style>
+    <title>Mentor Me</title>
+    <style>
+        /* Your existing CSS styles go here */
         * {
             box-sizing: border-box;
         }
@@ -162,6 +164,27 @@
             margin-top: 0.3rem;
             text-align: right;
             user-select: none;
+        }
+
+        /* Styles for the audio button */
+        .message .audio-control {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.2em;
+            margin-left: 0.5em;
+            vertical-align: middle;
+            color: #004aad; /* Match your primary color */
+            transition: color 0.2s ease;
+        }
+
+        .message .audio-control:hover:not(:disabled) {
+            color: #003580; /* Darker shade on hover */
+        }
+
+        .message .audio-control:disabled {
+            color: #b0c4de; /* Lighter color when disabled */
+            cursor: not-allowed;
         }
 
         .input-box {
@@ -363,7 +386,8 @@
 <body>
 
     <header>
-        <h1>Mentor Me</h1> </header>
+        <h1>Mentor Me</h1>
+    </header>
 
     <div class="login" id="login-section">
         <h2>Login</h2>
@@ -456,6 +480,7 @@
         const mainAppContainer = document.getElementById('main-app-container');
         const setupSection = document.getElementById('setup-section');
         const chatMessagesArea = document.getElementById('chat-messages-area');
+        const chatMessagesDiv = document.getElementById('chat-messages'); // Get the messages container
 
         // NEW Skill Selection Elements
         const skillsSelectionContainer = document.getElementById('skills-selection-container');
@@ -547,8 +572,8 @@
             currentSelectedSkills.delete(skillToRemove);
             // If "Others" was the one removed, ensure the "Others" tag is deselected and input hidden
             if (skillToRemove === "Others") {
-                 othersSkillTag.classList.remove('selected');
-                 customSkillInputContainer.classList.add('hidden');
+                othersSkillTag.classList.remove('selected');
+                customSkillInputContainer.classList.add('hidden');
             }
             // Also deselect predefined tags if they were removed
             document.querySelectorAll('.skill-tag.predefined').forEach(tag => {
@@ -589,7 +614,6 @@
 
         // --- End Skill Selection Logic ---
 
-
         async function login() {
             userId = document.getElementById("userId").value.trim();
             const password = document.getElementById("password").value;
@@ -604,7 +628,7 @@
             loginBtn.textContent = "Logging in...";
 
             try {
-                const res = await fetch("http://127.0.0.1:8000/login", {
+                const res = await fetch("http://127.0.0.1:8085/login", {
                     method: "POST",
                     headers: {"Content-Type": "application/json"},
                     body: JSON.stringify({user_id: userId, password})
@@ -682,10 +706,9 @@
             customSkillInput.value = ""; // Clear custom skill input
         }
 
-
         async function fetchChats() {
             try {
-                const res = await fetch(`http://127.0.0.1:8000/get_chats?user_id=${encodeURIComponent(userId)}`);
+                const res = await fetch(`http://127.0.0.1:8085/get_chats?user_id=${encodeURIComponent(userId)}`);
                 if (!res.ok) throw new Error("Failed to fetch chats. Status: " + res.status);
                 const data = await res.json();
                 const list = document.getElementById("past-sessions");
@@ -748,7 +771,7 @@
         async function loadChat(title) {
             try {
                 // Ensure the title parameter is correctly encoded
-                const res = await fetch(`http://127.0.0.1:8000/get_chat_messages?user_id=${encodeURIComponent(userId)}&title=${encodeURIComponent(title)}`);
+                const res = await fetch(`http://127.0.0.1:8085/get_chat_messages?user_id=${encodeURIComponent(userId)}&title=${encodeURIComponent(title)}`);
                 if (!res.ok) throw new Error("Failed to load chat messages. Status: " + res.status);
                 const data = await res.json();
                 chatHistory = data.messages || [];
@@ -775,7 +798,7 @@
             try {
                 sendBtn.disabled = true;
                 sendBtn.textContent = "Starting...";
-                const res = await fetch("http://127.0.0.1:8000/start_session", {
+                const res = await fetch("http://127.0.0.1:8085/start_session", {
                     method: "POST",
                     headers: {"Content-Type": "application/json"},
                     body: JSON.stringify({ user_id: userId, skills, difficulty, role })
@@ -808,63 +831,193 @@
             const message = input.value.trim();
             if (!message) return;
 
-            chatHistory.push({ role: "user", content: message, timestamp: Date.Now() });
+            // Add user message to history and render
+            chatHistory.push({ role: "user", content: message, timestamp: Date.now() });
             renderMessages();
-            input.value = "";
-            input.style.height = 'auto'; // Reset textarea height after sending
+            input.value = ""; // Clear input
+            input.style.height = 'auto'; // Reset textarea height
 
-            showTyping(true);
-            sendBtn.disabled = true;
+            showTypingIndicator(); // Show typing indicator before sending message
 
             try {
-                const res = await fetch("http://127.0.0.1:8000/chat", {
+                const res = await fetch("http://127.0.0.1:8085/chat", {
                     method: "POST",
                     headers: {"Content-Type": "application/json"},
                     body: JSON.stringify({ user_id: userId, chat_history: chatHistory })
                 });
-                if (!res.ok) throw new Error("Failed to get mentor response. Status: " + res.status);
-                const data = await res.json();
-                chatHistory.push({ role: "assistant", content: data.reply, timestamp: Date.Now() });
-                renderMessages();
-                // After sending a message, the chat might be updated in the backend, so refresh sidebar
-                await fetchChats();
-            } catch (e) {
-                alert("Error communicating with mentor: " + e.message);
-                console.error("Error sending message:", e);
-            } finally {
-                showTyping(false);
-                sendBtn.disabled = false;
-            }
-        }
 
-        function showTyping(show) {
-            if (show) {
-                typingIndicator.classList.remove("hidden");
-            } else {
-                typingIndicator.classList.add("hidden");
+                if (!res.ok) {
+                    const errorText = await res.text(); // Get more details from the response
+                    throw new Error(`Chat failed with status ${res.status}: ${errorText}`);
+                }
+                const data = await res.json();
+                chatHistory.push({ role: "assistant", content: data.reply, timestamp: Date.now() });
+                renderMessages();
+                await saveCurrentChat(); // Save the chat after each message exchange
+            } catch (e) {
+                console.error("Error sending message:", e);
+                chatHistory.push({ role: "assistant", content: "Error: Could not get a response from the mentor. Please try again. Details: " + e.message, timestamp: Date.now() });
+                renderMessages();
+            } finally {
+                hideTypingIndicator(); // Hide typing indicator after response
             }
         }
 
         function renderMessages() {
-            const container = document.getElementById("chat-messages");
-            container.innerHTML = "";
+            chatMessagesDiv.innerHTML = "";
             chatHistory.forEach(msg => {
-                const div = document.createElement("div");
-                div.className = "message " + (msg.role === "user" ? "user" : "mentor");
-                
-                // Use innerHTML to correctly render newlines and hyphen bullet points
-                div.innerHTML = msg.content; 
+                const msgDiv = document.createElement("div");
+                msgDiv.className = `message ${msg.role}`;
 
-                const timeElem = document.createElement("time");
-                const timeVal = msg.timestamp ? new Date(msg.timestamp) : new Date();
-                timeElem.textContent = timeVal.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                div.appendChild(timeElem);
+                if (msg.role === "assistant") {
+                    // Add mentor icon
+                    const iconSpan = document.createElement("span");
+                    iconSpan.className = "mentor-icon";
+                    msgDiv.appendChild(iconSpan);
 
-                container.appendChild(div);
+                    // Add text content
+                    const textSpan = document.createElement("span");
+                    textSpan.textContent = msg.content;
+                    msgDiv.appendChild(textSpan);
+
+                    // Add the audio button for mentor messages
+                    const audioButton = document.createElement("button");
+                    audioButton.className = "audio-control";
+                    audioButton.textContent = "🔊"; // Speaker emoji
+                    audioButton.title = "Listen to message";
+                    audioButton.onclick = () => playAudio(msg.content, audioButton); // Pass button for disable/enable
+                    msgDiv.appendChild(audioButton);
+                } else {
+                    // For user messages, just add text content
+                    msgDiv.textContent = msg.content;
+                }
+
+                const timeSpan = document.createElement("time");
+                const date = new Date(msg.timestamp); // Assuming timestamp is epoch milliseconds
+                timeSpan.textContent = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                msgDiv.appendChild(timeSpan);
+
+                chatMessagesDiv.appendChild(msgDiv);
             });
-            container.scrollTop = container.scrollHeight;
+            chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight; // Auto-scroll to bottom
         }
 
+        // --- NEW: Audio Playback Function ---
+        let currentAudio = null; // To keep track of the currently playing audio
+
+        async function playAudio(text, buttonElement) {
+            if (!text) return;
+
+            // Disable the button to prevent multiple clicks
+            buttonElement.disabled = true;
+            buttonElement.textContent = "Loading..."; // Indicate loading state
+
+            // Stop any currently playing audio
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.src = ''; // Clear source
+                currentAudio = null;
+            }
+
+            try {
+                // Encode the text to be safely passed as a URL query parameter
+                const encodedText = encodeURIComponent(text);
+                const audioUrl = `http://127.0.0.1:8085/text_to_speech_direct?text=${encodedText}`;
+
+                // Create a new Audio object
+                currentAudio = new Audio(audioUrl);
+
+                // Add event listeners for when audio starts and ends
+                currentAudio.onplay = () => {
+                    buttonElement.textContent = "⏸️"; // Change to pause icon
+                    buttonElement.title = "Pause audio";
+                };
+
+                currentAudio.onended = () => {
+                    buttonElement.disabled = false; // Re-enable button
+                    buttonElement.textContent = "🔊"; // Change back to play icon
+                    buttonElement.title = "Listen to message";
+                    currentAudio = null; // Clear reference
+                };
+
+                currentAudio.onpause = () => {
+                    buttonElement.disabled = false; // Re-enable button
+                    buttonElement.textContent = "🔊"; // Change back to play icon
+                    buttonElement.title = "Listen to message";
+                    // Do not clear currentAudio here, allow it to be resumed
+                };
+
+                currentAudio.onerror = (e) => {
+                    console.error("Audio playback error:", e);
+                    alert("Failed to play audio. See console for details.");
+                    buttonElement.disabled = false;
+                    buttonElement.textContent = "🔊"; // Revert icon
+                    buttonElement.title = "Listen to message (Error)";
+                    currentAudio = null;
+                };
+
+                // Attempt to play the audio
+                await currentAudio.play();
+
+            } catch (e) {
+                console.error("Error playing audio:", e);
+                alert("Could not play audio. Ensure the backend is running and reachable.");
+                buttonElement.disabled = false;
+                buttonElement.textContent = "🔊";
+                buttonElement.title = "Listen to message (Failed)";
+                currentAudio = null;
+            }
+        }
+        // --- END Audio Playback Function ---
+
+
+        function showTypingIndicator() {
+            typingIndicator.classList.remove('hidden');
+            chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight; // Scroll to show indicator
+        }
+
+        function hideTypingIndicator() {
+            typingIndicator.classList.add('hidden');
+        }
+
+        async function saveCurrentChat() {
+            // Check if chatHistory is not empty and userId exists
+            if (chatHistory.length === 0 || !userId) {
+                console.warn("No chat history or user ID to save.");
+                return;
+            }
+
+            // Determine a session title. For new sessions, it's set by startSession.
+            // For ongoing chats, we might need a default or derive it.
+            // For simplicity, we'll try to use the most recent mentor message's start as a title hint
+            // or just a generic "Chat Session [timestamp]".
+            let currentChatTitle = "Chat Session " + new Date().toLocaleString();
+            if (chatHistory[0] && chatHistory[0].role === "assistant" && chatHistory[0].content) {
+                // Take the first line of the first mentor message as a potential title
+                currentChatTitle = chatHistory[0].content.split('\n')[0].substring(0, 50); // First 50 chars
+                if (currentChatTitle.length === 50) currentChatTitle += "...";
+            }
+            // You might want to get the actual title from `startSession` and store it in a global variable
+            // For now, this is a reasonable fallback.
+
+            try {
+                const res = await fetch("http://127.0.0.1:8085/save-chat", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({
+                        user_id: userId,
+                        title: currentChatTitle, // Using a simple title for now
+                        messages_json: JSON.stringify(chatHistory)
+                    })
+                });
+
+                if (!res.ok) throw new Error("Failed to save chat. Status: " + res.status);
+                // console.log("Chat saved successfully.");
+                await fetchChats(); // Refresh sidebar to show updated session (e.g., if title changed)
+            } catch (e) {
+                console.error("Error saving chat:", e);
+            }
+        }
     </script>
 </body>
 </html>
