@@ -473,6 +473,7 @@
     <script>
         let chatHistory = [];
         let userId = "";
+        let currentChatTitle = null; // <<< ADD THIS NEW VARIABLE to store the current chat title
         let typingTimeout;
         const loginBtn = document.getElementById('login-btn');
         const sendBtn = document.getElementById('send-btn');
@@ -697,6 +698,7 @@
             setupSection.classList.remove("hidden");
             chatMessagesArea.classList.add("hidden");
             chatHistory = []; // Clear chat history when starting a new session
+            currentChatTitle = null; // <<< IMPORTANT: Clear the current chat title when starting a new session
             renderMessages(); // Clear messages from display
             // Clear and reset skills selection for a new session
             currentSelectedSkills.clear();
@@ -775,6 +777,7 @@
                 if (!res.ok) throw new Error("Failed to load chat messages. Status: " + res.status);
                 const data = await res.json();
                 chatHistory = data.messages || [];
+                currentChatTitle = title; // <<< IMPORTANT: Set the current chat title when loading a chat
                 renderMessages();
 
                 setupSection.classList.add("hidden");
@@ -812,6 +815,8 @@
                 setupSection.classList.add("hidden");
                 chatMessagesArea.classList.remove("hidden");
 
+                currentChatTitle = data.title; // <<< IMPORTANT: Capture the new chat title from the backend response
+
                 // Use data.intro_and_topics directly as it's now formatted
                 chatHistory.push({ role: "assistant", content: data.intro_and_topics, timestamp: Date.now() });
                 renderMessages();
@@ -831,192 +836,138 @@
             const message = input.value.trim();
             if (!message) return;
 
+            if (!currentChatTitle) { // <<< IMPORTANT: Add a check if a chat session is active
+                alert("Please start a new session or load a previous one before sending messages.");
+                return;
+            }
+
             // Add user message to history and render
             chatHistory.push({ role: "user", content: message, timestamp: Date.now() });
             renderMessages();
-            input.value = ""; // Clear input
+            input.value = ""; // Clear input after sending
             input.style.height = 'auto'; // Reset textarea height
 
-            showTypingIndicator(); // Show typing indicator before sending message
+            showTypingIndicator();
+            sendBtn.disabled = true;
 
             try {
                 const res = await fetch("http://127.0.0.1:8085/chat", {
                     method: "POST",
                     headers: {"Content-Type": "application/json"},
-                    body: JSON.stringify({ user_id: userId, chat_history: chatHistory })
+                    body: JSON.stringify({
+                        user_id: userId,
+                        chat_title: currentChatTitle, // <<< IMPORTANT: Include the currentChatTitle here
+                        chat_history: chatHistory // Send the whole history
+                    })
                 });
 
                 if (!res.ok) {
-                    const errorText = await res.text(); // Get more details from the response
-                    throw new Error(`Chat failed with status ${res.status}: ${errorText}`);
+                    const errorData = await res.json();
+                    throw new Error(`Chat failed: ${errorData.detail || res.statusText}`);
                 }
+
                 const data = await res.json();
                 chatHistory.push({ role: "assistant", content: data.reply, timestamp: Date.now() });
                 renderMessages();
-                await saveCurrentChat(); // Save the chat after each message exchange
             } catch (e) {
                 console.error("Error sending message:", e);
-                chatHistory.push({ role: "assistant", content: "Error: Could not get a response from the mentor. Please try again. Details: " + e.message, timestamp: Date.now() });
+                // Optionally add an error message to the chat history
+                chatHistory.push({ role: "system", content: "Error: " + e.message, timestamp: Date.now() });
                 renderMessages();
             } finally {
-                hideTypingIndicator(); // Hide typing indicator after response
+                hideTypingIndicator();
+                sendBtn.disabled = false;
+                scrollToBottom();
             }
         }
 
         function renderMessages() {
             chatMessagesDiv.innerHTML = "";
             chatHistory.forEach(msg => {
-                const msgDiv = document.createElement("div");
-                msgDiv.className = `message ${msg.role}`;
+                const messageDiv = document.createElement("div");
+                messageDiv.className = `message ${msg.role}`;
 
+                let content = msg.content;
+                let audioButtonHtml = '';
+
+                // Add mentor icon only for mentor messages
                 if (msg.role === "assistant") {
-                    // Add mentor icon
-                    const iconSpan = document.createElement("span");
-                    iconSpan.className = "mentor-icon";
-                    msgDiv.appendChild(iconSpan);
-
-                    // Add text content
-                    const textSpan = document.createElement("span");
-                    textSpan.textContent = msg.content;
-                    msgDiv.appendChild(textSpan);
-
-                    // Add the audio button for mentor messages
-                    const audioButton = document.createElement("button");
-                    audioButton.className = "audio-control";
-                    audioButton.textContent = "🔊"; // Speaker emoji
-                    audioButton.title = "Listen to message";
-                    audioButton.onclick = () => playAudio(msg.content, audioButton); // Pass button for disable/enable
-                    msgDiv.appendChild(audioButton);
-                } else {
-                    // For user messages, just add text content
-                    msgDiv.textContent = msg.content;
+                    content = `<span class="mentor-icon"></span>${content}`;
+                    // Check for audio URL from backend (if you add this later)
+                    // For now, let's assume we can generate audio on the fly if needed
+                    // A simple indicator for now. If the backend actually returns audio_url,
+                    // you'd update this logic.
+                    audioButtonHtml = `<button class="audio-control" onclick="playMentorAudio('${encodeURIComponent(msg.content)}', this)">🔊</button>`;
                 }
 
-                const timeSpan = document.createElement("time");
-                const date = new Date(msg.timestamp); // Assuming timestamp is epoch milliseconds
-                timeSpan.textContent = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                msgDiv.appendChild(timeSpan);
+                // If content has "🔊" at the end, remove it as we're adding a button for it.
+                if (msg.role === "assistant" && content.endsWith("🔊")) {
+                    content = content.slice(0, -1);
+                }
 
-                chatMessagesDiv.appendChild(msgDiv);
+
+                messageDiv.innerHTML = `${content}${audioButtonHtml}<time>${new Date(msg.timestamp).toLocaleTimeString()}</time>`;
+                chatMessagesDiv.appendChild(messageDiv);
             });
-            chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight; // Auto-scroll to bottom
+            scrollToBottom();
         }
 
-        // --- NEW: Audio Playback Function ---
-        let currentAudio = null; // To keep track of the currently playing audio
-
-        async function playAudio(text, buttonElement) {
-            if (!text) return;
-
-            // Disable the button to prevent multiple clicks
-            buttonElement.disabled = true;
-            buttonElement.textContent = "Loading..."; // Indicate loading state
-
-            // Stop any currently playing audio
-            if (currentAudio) {
-                currentAudio.pause();
-                currentAudio.src = ''; // Clear source
-                currentAudio = null;
-            }
+        async function playMentorAudio(text, buttonElement) {
+            buttonElement.disabled = true; // Disable button while playing
+            buttonElement.textContent = '...'; // Change text to indicate loading
 
             try {
-                // Encode the text to be safely passed as a URL query parameter
-                const encodedText = encodeURIComponent(text);
-                const audioUrl = `http://127.0.0.1:8085/text_to_speech_direct?text=${encodedText}`;
+                // Use the new POST endpoint for TTS
+                const res = await fetch("http://127.0.0.1:8085/text_to_speech", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ text: decodeURIComponent(text) })
+                });
 
-                // Create a new Audio object
-                currentAudio = new Audio(audioUrl);
+                if (!res.ok) {
+                    throw new Error(`Failed to get audio: ${res.status} ${res.statusText}`);
+                }
 
-                // Add event listeners for when audio starts and ends
-                currentAudio.onplay = () => {
-                    buttonElement.textContent = "⏸️"; // Change to pause icon
-                    buttonElement.title = "Pause audio";
-                };
+                const audioBlob = await res.blob();
+                const audioUrl = URL.createObjectURL(audioBlob);
+                const audio = new Audio(audioUrl);
 
-                currentAudio.onended = () => {
-                    buttonElement.disabled = false; // Re-enable button
-                    buttonElement.textContent = "🔊"; // Change back to play icon
-                    buttonElement.title = "Listen to message";
-                    currentAudio = null; // Clear reference
-                };
-
-                currentAudio.onpause = () => {
-                    buttonElement.disabled = false; // Re-enable button
-                    buttonElement.textContent = "🔊"; // Change back to play icon
-                    buttonElement.title = "Listen to message";
-                    // Do not clear currentAudio here, allow it to be resumed
-                };
-
-                currentAudio.onerror = (e) => {
-                    console.error("Audio playback error:", e);
-                    alert("Failed to play audio. See console for details.");
+                audio.onended = () => {
                     buttonElement.disabled = false;
-                    buttonElement.textContent = "🔊"; // Revert icon
-                    buttonElement.title = "Listen to message (Error)";
-                    currentAudio = null;
+                    buttonElement.textContent = '🔊';
+                    URL.revokeObjectURL(audioUrl); // Clean up the object URL
                 };
+                audio.onerror = (e) => {
+                    console.error("Audio playback error:", e);
+                    buttonElement.disabled = false;
+                    buttonElement.textContent = '🔊';
+                    alert("Failed to play audio.");
+                    URL.revokeObjectURL(audioUrl);
+                };
+                audio.play();
 
-                // Attempt to play the audio
-                await currentAudio.play();
-
-            } catch (e) {
-                console.error("Error playing audio:", e);
-                alert("Could not play audio. Ensure the backend is running and reachable.");
+            } catch (error) {
+                console.error("Error in playMentorAudio:", error);
+                alert("Could not play audio: " + error.message);
                 buttonElement.disabled = false;
-                buttonElement.textContent = "🔊";
-                buttonElement.title = "Listen to message (Failed)";
-                currentAudio = null;
+                buttonElement.textContent = '🔊';
             }
         }
-        // --- END Audio Playback Function ---
 
 
         function showTypingIndicator() {
             typingIndicator.classList.remove('hidden');
-            chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight; // Scroll to show indicator
+            scrollToBottom();
         }
 
         function hideTypingIndicator() {
             typingIndicator.classList.add('hidden');
         }
 
-        async function saveCurrentChat() {
-            // Check if chatHistory is not empty and userId exists
-            if (chatHistory.length === 0 || !userId) {
-                console.warn("No chat history or user ID to save.");
-                return;
-            }
-
-            // Determine a session title. For new sessions, it's set by startSession.
-            // For ongoing chats, we might need a default or derive it.
-            // For simplicity, we'll try to use the most recent mentor message's start as a title hint
-            // or just a generic "Chat Session [timestamp]".
-            let currentChatTitle = "Chat Session " + new Date().toLocaleString();
-            if (chatHistory[0] && chatHistory[0].role === "assistant" && chatHistory[0].content) {
-                // Take the first line of the first mentor message as a potential title
-                currentChatTitle = chatHistory[0].content.split('\n')[0].substring(0, 50); // First 50 chars
-                if (currentChatTitle.length === 50) currentChatTitle += "...";
-            }
-            // You might want to get the actual title from `startSession` and store it in a global variable
-            // For now, this is a reasonable fallback.
-
-            try {
-                const res = await fetch("http://127.0.0.1:8085/save-chat", {
-                    method: "POST",
-                    headers: {"Content-Type": "application/json"},
-                    body: JSON.stringify({
-                        user_id: userId,
-                        title: currentChatTitle, // Using a simple title for now
-                        messages_json: JSON.stringify(chatHistory)
-                    })
-                });
-
-                if (!res.ok) throw new Error("Failed to save chat. Status: " + res.status);
-                // console.log("Chat saved successfully.");
-                await fetchChats(); // Refresh sidebar to show updated session (e.g., if title changed)
-            } catch (e) {
-                console.error("Error saving chat:", e);
-            }
+        function scrollToBottom() {
+            chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
         }
     </script>
 </body>
