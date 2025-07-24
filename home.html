@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Integrated AI Assistant</title>
+    <!-- Tailwind CSS CDN for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* Light gray background */
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+    <div class="bg-white p-8 rounded-xl shadow-2xl max-w-2xl w-full text-center">
+        <h1 class="text-4xl font-extrabold text-gray-900 mb-10">Integrated AI Assistant</h1>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- Mentor Tile -->
+            <a href="mentor/ui/index.html" class="block">
+                <div class="bg-gradient-to-br from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 
+                            text-white p-8 rounded-xl shadow-lg transition-all duration-300 transform 
+                            hover:scale-105 hover:shadow-xl flex flex-col items-center justify-center h-48">
+                    <svg class="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"></path>
+                    </svg>
+                    <h2 class="text-2xl font-bold">Mentor</h2>
+                    <p class="mt-2 text-sm opacity-90">Get guidance and expert advice.</p>
+                </div>
+            </a>
+
+            <!-- Interview Assistant Tile -->
+            <a href="interview_assistant/ui/index.html" class="block">
+                <div class="bg-gradient-to-br from-green-500 to-teal-600 hover:from-green-600 hover:to-teal-700 
+                            text-white p-8 rounded-xl shadow-lg transition-all duration-300 transform 
+                            hover:scale-105 hover:shadow-xl flex flex-col items-center justify-center h-48">
+                    <svg class="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.797 0-7.5-.902-11.255-2.745M15 11a3 3 0 11-6 0 3 3 0 016 0zm9 0a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <h2 class="text-2xl font-bold">Interview Assistant</h2>
+                    <p class="mt-2 text-sm opacity-90">Prepare and excel in your interviews.</p>
+                </div>
+            </a>
+        </div>
+    </div>
+</body>
+</html>

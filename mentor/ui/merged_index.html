@@ -1,0 +1,2054 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Integrated AI Assistant</title>
+    <style>
+        /* --- COMMON STYLES --- */
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', sans-serif;
+            background-color: #f4f7fc;
+            color: #333;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden; /* Prevent overall scrolling */
+        }
+
+        header {
+            background-color: #004aad;
+            color: white;
+            padding: 1rem;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 1rem;
+            background-color: #004aad;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .container {
+            display: flex;
+            flex: 1;
+            overflow: hidden; /* Ensure content inside container doesn't cause overflow */
+            flex-direction: column; /* Default to column for login/dashboard */
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        /* Styles for common form elements */
+        .form-group {
+            margin-bottom: 1rem;
+            width: 100%;
+        }
+
+        select, input[type="text"], input[type="password"], textarea {
+            width: 100%;
+            padding: 0.75rem;
+            font-size: 1rem;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        button {
+            padding: 0.6rem 1rem;
+            background-color: #004aad;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+            font-weight: 600;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover:not(:disabled) {
+            background-color: #003580;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* --- LOGIN & DASHBOARD STYLES --- */
+        .login, .dashboard-section {
+            max-width: 400px;
+            width: 90%;
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .dashboard-section button {
+            display: block;
+            width: 100%;
+            margin-bottom: 1rem;
+            padding: 1rem;
+            font-size: 1.2rem;
+        }
+
+        /* Show password toggle */
+        .password-wrapper {
+            position: relative;
+        }
+
+        .password-wrapper input {
+            padding-right: 2.5rem;
+        }
+
+        .toggle-password {
+            position: absolute;
+            top: 50%;
+            right: 0.7rem;
+            transform: translateY(-50%);
+            cursor: pointer;
+            font-size: 1.1rem;
+            color: #777;
+            user-select: none;
+        }
+
+        /* --- MENTOR ME APP STYLES --- */
+        #mentor-me-app-container {
+            display: flex;
+            flex: 1;
+            width: 100%;
+            max-width: 1200px; /* Max width for mentor app */
+            margin: 0 auto;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 280px;
+            min-width: 200px;
+            background-color: #e8f0fe;
+            padding: 1rem;
+            border-right: 1px solid #ccc;
+            overflow-y: auto;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar h3, .sidebar h4 {
+            margin-top: 0;
+            margin-bottom: 0.5rem;
+        }
+
+        #logged-in-user {
+            font-weight: bold;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+            color: #004aad;
+        }
+
+        #past-sessions {
+            list-style: none;
+            padding-left: 0;
+            margin-top: 1rem;
+            margin-bottom: 0;
+            flex-grow: 1; /* Allow sessions list to grow */
+        }
+
+        #past-sessions li {
+            background: white;
+            margin-bottom: 0.75rem;
+            padding: 0.6rem 0.8rem;
+            border-radius: 6px;
+            cursor: pointer;
+            box-shadow: 0 0 5px rgba(0,0,0,0.05);
+            transition: background-color 0.2s ease;
+        }
+
+        #past-sessions li:hover {
+            background-color: #d2e3fc;
+        }
+
+        .session-title {
+            font-weight: 600;
+            color: #004aad;
+            margin-bottom: 0.2rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .session-meta {
+            font-size: 0.75rem;
+            color: #666;
+            margin-bottom: 0.3rem;
+        }
+
+        .session-snippet {
+            font-size: 0.85rem;
+            color: #333;
+            max-height: 2.8em;
+            line-height: 1.4em;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .main-content-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .messages {
+            flex: 1;
+            padding: 1rem;
+            overflow-y: auto;
+            background-color: white;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .message {
+            margin: 0.5rem 0;
+            padding: 0.75rem;
+            border-radius: 8px;
+            max-width: 70%;
+            position: relative;
+            word-wrap: break-word;
+            white-space: pre-wrap; /* Ensures newlines and spaces are respected */
+        }
+
+        .message.user {
+            background-color: #d2e3fc;
+            align-self: flex-end;
+        }
+
+        .message.assistant { /* Changed from .mentor to .assistant to match backend model */
+            background-color: #ffffff;
+            align-self: flex-start;
+            border-left: 5px solid #004aad;
+            white-space: pre-wrap; /* Ensures newlines and spaces are respected */
+        }
+
+        .mentor-icon::before {
+            content: "👨‍🏫 ";
+        }
+
+        .message time {
+            display: block;
+            font-size: 0.7rem;
+            color: #777;
+            margin-top: 0.3rem;
+            text-align: right;
+            user-select: none;
+        }
+
+        /* Styles for the audio button */
+        .message .audio-control {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.2em;
+            margin-left: 0.5em;
+            vertical-align: middle;
+            color: #004aad; /* Match your primary color */
+            transition: color 0.2s ease;
+        }
+
+        .message .audio-control:hover:not(:disabled) {
+            color: #003580; /* Darker shade on hover */
+        }
+
+        .message .audio-control:disabled {
+            color: #b0c4de; /* Lighter color when disabled */
+            cursor: not-allowed;
+        }
+
+        .input-box {
+            display: flex;
+            padding: 1rem;
+            background-color: #f1f1f1;
+            border-top: 1px solid #ccc;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .input-box textarea {
+            flex: 1;
+            padding: 0.75rem;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 1rem;
+            resize: vertical;
+            min-height: 40px;
+            max-height: 120px;
+            overflow-y: auto;
+        }
+
+        .input-box button {
+            background-color: #004aad;
+            color: white;
+            padding: 0.75rem 1rem;
+            border: none;
+            margin-left: 0.5rem;
+            border-radius: 5px;
+            cursor: pointer;
+            min-width: 80px;
+            font-weight: 600;
+            transition: background-color 0.3s ease;
+        }
+
+        .input-box button:disabled {
+            background-color: #6699cc;
+            cursor: not-allowed;
+        }
+
+        .setup {
+            max-width: 600px;
+            margin: 2rem auto;
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            width: 90%;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            overflow-y: auto;
+            padding-bottom: 2rem;
+        }
+        .setup .form-group {
+            width: 100%;
+            max-width: 400px;
+            text-align: left;
+        }
+        .setup button {
+            margin-top: 1rem;
+        }
+
+        /* Typing indicator */
+        #typing-indicator {
+            font-style: italic;
+            color: #666;
+            margin: 0 1rem 0.5rem 1rem;
+            height: 1.5rem;
+            user-select: none;
+            text-align: center;
+        }
+
+        /* Skill Selection Styles */
+        .skill-tag {
+            background-color: #e8f0fe;
+            color: #004aad;
+            padding: 8px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            border: 1px solid #c2d9ff;
+            transition: all 0.2s ease;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+
+        .skill-tag:hover {
+            background-color: #d2e3fc;
+            border-color: #a8c8ff;
+        }
+
+        .skill-tag.selected {
+            background-color: #004aad;
+            color: white;
+            border-color: #003580;
+        }
+
+        .selected-skill-item {
+            background-color: #0056b3;
+            color: white;
+            padding: 5px 8px;
+            border-radius: 3px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+
+        .selected-skill-item .remove-skill {
+            background: none;
+            border: none;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            padding: 0 3px;
+            line-height: 1;
+            font-size: 1em;
+            margin-left: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 1em;
+        }
+
+        #custom-skill-input-container button {
+            padding: 0.5rem 0.8rem;
+            font-size: 0.9rem;
+            white-space: nowrap;
+        }
+
+        /* --- INTERVIEW ASSISTANT APP STYLES (from styles.css) --- */
+        #interview-assistant-app-container {
+            flex: 1;
+            width: 100%;
+            max-width: 900px; /* Max width for interview app */
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .page {
+            flex: 1;
+            display: none;
+            flex-direction: column;
+            padding: 1rem;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            margin-bottom: 1rem;
+            overflow-y: auto; /* Allow page content to scroll */
+        }
+
+        .page.active {
+            display: flex;
+        }
+
+        /* Header (already defined, might need specificity if conflicting) */
+        .header {
+            background-color: #0056b3;
+            color: white;
+            padding: 1rem;
+            text-align: center;
+            margin-bottom: 1rem;
+            border-radius: 8px;
+        }
+
+        /* Home Page Styles */
+        .welcome-section, .about-section, .config-section, .interview-header, .interview-content, .report-header, .report-content, .report-actions {
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.05);
+        }
+
+        .welcome-section h2, .about-section h2, .config-section h2, .interview-header h2, .report-header h2 {
+            color: #004aad;
+            margin-top: 0;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .features {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+        }
+
+        .feature {
+            background-color: #e8f0fe;
+            color: #004aad;
+            padding: 10px 15px;
+            margin: 5px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            text-align: center;
+        }
+
+        /* Buttons */
+        .primary-btn {
+            background-color: #004aad;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.3s ease;
+            margin-top: 10px;
+        }
+
+        .primary-btn:hover {
+            background-color: #003580;
+        }
+
+        .secondary-btn {
+            background-color: #6c757d;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.3s ease;
+            margin-top: 10px;
+            margin-left: 10px;
+        }
+
+        .secondary-btn:hover {
+            background-color: #5a6268;
+        }
+
+        .danger-btn {
+            background-color: #dc3545;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.3s ease;
+            margin-top: 10px;
+            margin-left: 10px;
+        }
+
+        .danger-btn:hover {
+            background-color: #c82333;
+        }
+
+        /* Config Page Styles */
+        .config-section form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .difficulty-details {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #e8f0fe;
+            border-left: 4px solid #004aad;
+            border-radius: 4px;
+            font-size: 0.9em;
+            color: #333;
+        }
+
+        /* Interview Page Styles */
+        .interview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            background-color: #e8f0fe;
+            padding: 1rem;
+            border-radius: 8px;
+        }
+
+        .interview-info h2 {
+            margin: 0;
+            color: #004aad;
+        }
+
+        #progress-info {
+            font-size: 0.9em;
+            color: #555;
+        }
+
+        .timer-container {
+            background-color: #004aad;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        .interview-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            padding: 1rem;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.05);
+            overflow-y: auto; /* Allow interview content to scroll */
+        }
+
+        .question-section {
+            background-color: #ffffff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .question-box {
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 1rem;
+        }
+
+        #answer-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 1em;
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .action-buttons {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 1rem;
+        }
+
+        /* Chat messages within interview page */
+        #interview-chat-messages { /* Renamed to avoid conflict */
+            flex: none; /* Do not grow */
+            max-height: 200px; /* Limit height */
+            overflow-y: auto;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            padding: 0.5rem;
+            background-color: #f0f8ff;
+            margin-bottom: 1rem;
+        }
+
+        .chat-message {
+            margin-bottom: 0.5rem;
+            padding: 0.5rem;
+            border-radius: 5px;
+            font-size: 0.9em;
+        }
+
+        .chat-message.interviewer {
+            background-color: #e0f7fa;
+            align-self: flex-start;
+        }
+
+        .chat-message.candidate {
+            background-color: #e6ffe6;
+            align-self: flex-end;
+            text-align: right;
+        }
+
+        /* Report Page Styles */
+        .report-summary {
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #004aad;
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .question-analysis, .overall-evaluation {
+            background-color: #ffffff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .question-analysis h3, .overall-evaluation h3 {
+            color: #004aad;
+            margin-top: 0;
+            margin-bottom: 0.8rem;
+        }
+
+        .report-actions {
+            text-align: center;
+            margin-top: 1.5rem;
+        }
+
+        /* Loading Overlay */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+        }
+
+        .loading-spinner {
+            border: 8px solid #f3f3f3;
+            border-top: 8px solid #004aad;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 1.2em;
+            color: #004aad;
+            font-weight: bold;
+        }
+
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1001;
+        }
+
+        .toast {
+            background-color: #333;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        .toast.show {
+            opacity: 1;
+        }
+
+        /* Media Queries for Responsiveness */
+        @media (max-width: 768px) {
+            .container {
+                padding: 0.5rem;
+            }
+
+            .sidebar {
+                width: 100%;
+                height: auto;
+                border-right: none;
+                border-bottom: 1px solid #ccc;
+                margin-bottom: 1rem;
+            }
+
+            #mentor-me-app-container {
+                flex-direction: column;
+            }
+
+            .main-content-area {
+                width: 100%;
+            }
+
+            .message {
+                max-width: 90%;
+            }
+
+            .features {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .feature {
+                width: 90%;
+            }
+
+            .interview-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+
+            .secondary-btn, .danger-btn {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Integrated AI Assistant</h1>
+    </header>
+
+    <div class="container">
+        <div class="login" id="login-section">
+            <h2>Login</h2>
+            <div class="form-group">
+                <label for="userId">User ID:</label>
+                <input type="text" id="userId" />
+            </div>
+            <div class="form-group password-wrapper">
+                <label for="password">Password:</label>
+                <input type="password" id="password" />
+                <span id="toggle-password" class="toggle-password" title="Show/Hide password">👁️</span>
+            </div>
+            <button id="login-btn" onclick="login()">Login</button>
+            <p id="login-error" style="color: red;"></p>
+        </div>
+
+        <div class="dashboard-section hidden" id="dashboard-section">
+            <h2>Choose Your Path</h2>
+            <button id="mentor-me-choice-btn">Mentor Me</button>
+            <button id="interview-me-choice-btn">Interview Me</button>
+        </div>
+
+        <div id="mentor-me-app-container" class="app-container hidden">
+            <div class="sidebar">
+                <h3>Logged in as:</h3>
+                <div id="logged-in-user"></div>
+                <button onclick="showSetupSection()" style="margin-bottom: 1rem; width: 100%;">New Session</button>
+                <h4>Previous Sessions</h4>
+                <ul id="past-sessions" title="Click to load session"></ul>
+                <button onclick="showDashboard()" style="margin-top: auto; width: 100%;">Back to Dashboard</button>
+            </div>
+
+            <div class="main-content-area" id="dynamic-content-area">
+                <div class="setup" id="setup-section">
+                    <h2>Set Learning Preferences</h2>
+                    <div class="form-group">
+                        <label>Skills:</label>
+                        <div id="skills-selection-container" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;">
+                            <span class="skill-tag predefined" data-skill="Python">Python</span>
+                            <span class="skill-tag predefined" data-skill="Machine Learning">Machine Learning</span>
+                            <span class="skill-tag predefined" data-skill="Data Science">Data Science</span>
+                            <span class="skill-tag predefined" data-skill="AI">AI</span>
+                            <span class="skill-tag predefined" data-skill="Others" id="others-skill-tag">Others</span>
+                        </div>
+                        <div id="custom-skill-input-container" class="hidden" style="display: flex; gap: 5px;">
+                            <input type="text" id="custom-skill-input" placeholder="Type custom skill" style="flex: 1;"/>
+                            <button type="button" onclick="addCustomSkill()">Add</button>
+                        </div>
+                        <div id="selected-skills-display" style="border: 1px solid #ccc; padding: 5px; min-height: 40px; border-radius: 5px; background-color: #fff; display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin-top: 10px;">
+                            <span id="no-skills-selected" style="color: #999;">Click skills above to add</span>
+                        </div>
+                        <input type="hidden" id="selected-skills-hidden-input" name="selected_skills" value="" />
+                    </div>
+                    <div class="form-group">
+                        <label for="difficulty">Difficulty:</label>
+                        <select id="difficulty">
+                            <option value="Beginner">Beginner</option>
+                            <option value="Intermediate">Intermediate</option>
+                            <option value="Advanced">Advanced</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="role">Role:</label>
+                        <select id="role">
+                            <option value="Student">Student</option>
+                            <option value="Engineer">Engineer</option>
+                            <option value="Researcher">Researcher</option>
+                        </select>
+                    </div>
+                    <button onclick="startSession()">Start Session</button>
+                </div>
+
+                <div class="chat-area hidden" id="chat-messages-area">
+                    <div class="messages" id="chat-messages"></div>
+                    <div id="typing-indicator" class="hidden">Mentor is typing...</div>
+                    <div class="input-box">
+                        <textarea id="user-input" placeholder="Ask your mentor..." rows="1"></textarea>
+                        <button id="send-btn" onclick="sendMessage()">Send</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="interview-assistant-app-container" class="app-container hidden">
+            <div id="interview-home-page" class="page active">
+                <div class="welcome-section">
+                    <h2>Welcome to your AI-powered interview practice platform!</h2>
+                    <div class="features">
+                        <div class="feature"><b>Role-specific questions</b></div>
+                        <div class="feature"><b>Timed interviews</b></div>
+                        <div class="feature"><b>Smart hints</b></div>
+                        <div class="feature"><b>Evaluation reports</b></div>
+                    </div>
+                    <button id="interview-start-interview-btn" class="primary-btn">Start Interview</button>
+                </div>
+
+                <div class="about-section">
+                    <h2>About</h2>
+                    <p>This platform helps you prepare for interviews by simulating real interview scenarios with AI-generated questions and feedback.</p>
+                </div>
+                <button onclick="showDashboard()" class="secondary-btn">Back to Dashboard</button>
+            </div>
+
+            <div id="interview-config-page" class="page">
+                <div class="config-section">
+                    <h2> Set Your Skill Parameters</h2>
+                    <form id="interview-config-form">
+                        <div class="form-group">
+                            <label for="interview-category">Category</label>
+                            <select id="interview-category" required>
+                                <option value="">Select Category</option>
+                                <option value="technical">Technical</option>
+                                <option value="non_technical">Non-Technical</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="interview-role">Role</label>
+                            <select id="interview-role" required>
+                                <option value="">Select Role</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="interview-difficulty">Difficulty</label>
+                            <select id="interview-difficulty" required>
+                                <option value="">Select Difficulty</option>
+                                <option value="beginner">Beginner</option>
+                                <option value="intermediate">Intermediate</option>
+                                <option value="advanced">Advanced</option>
+                            </select>
+                        </div>
+
+                        <div id="interview-difficulty-details" class="difficulty-details"></div>
+
+                        <button type="submit" class="primary-btn">▶Start Interview</button>
+                        <button type="button" id="interview-back-home-btn" class="secondary-btn">Back to Home</button>
+                    </form>
+                </div>
+            </div>
+
+            <div id="interview-page" class="page">
+                <div class="interview-header">
+                    <div class="interview-info">
+                        <h2>Interview in Progress</h2>
+                        <div id="interview-progress-info"></div>
+                    </div>
+                    <div class="timer-container">
+                        <div id="interview-timer" class="timer">00:00</div>
+                    </div>
+                </div>
+
+                <div class="interview-content">
+                    <div id="interview-chat-messages" class="chat-messages"></div>
+
+                    <div class="question-section">
+                        <div id="interview-current-question" class="question-box"></div>
+                        <textarea id="interview-answer-input" placeholder="Type your detailed answer here..." rows="6"></textarea>
+                    </div>
+
+                    <div class="action-buttons">
+                        <button id="interview-submit-btn" class="primary-btn">Submit Answer</button>
+                        <button id="interview-hint-btn" class="secondary-btn">Get Hint</button>
+                        <button id="interview-skip-btn" class="secondary-btn">⏭Skip Question</button>
+                        <button id="interview-end-btn" class="danger-btn">End Interview</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="interview-report-page" class="page">
+                <div class="report-header">
+                    <h2>Interview Report</h2>
+                    <div id="interview-report-summary" class="report-summary"></div>
+                </div>
+
+                <div class="report-content">
+                    <div id="interview-question-analysis" class="question-analysis"></div>
+                    <div id="interview-overall-evaluation" class="overall-evaluation"></div>
+                </div>
+
+                <div class="report-actions">
+                    <button id="new-interview-btn" class="primary-btn">New Interview</button>
+                    <button id="download-report-btn" class="secondary-btn">Download Report</button>
+                    <button id="back-home-report-btn" class="secondary-btn">Back to Home</button>
+                </div>
+            </div>
+
+            <div id="loading-overlay" class="loading-overlay hidden">
+                <div class="loading-spinner"></div>
+                <div class="loading-text">Processing...</div>
+            </div>
+
+            <div id="toast-container" class="toast-container"></div>
+        </div>
+    </div>
+
+    <div class="footer">
+        Powered by HCL 2025
+    </div>
+
+    <script>
+        // --- GLOBAL VARIABLES (Common & Mentor Me) ---
+        let chatHistory = []; // Stores objects like { role: 'user', content: '...', timestamp: ..., isIntro: boolean, isInitialIntro: boolean }
+        let userId = "";
+        let currentChatTitle = null;
+        let typingTimeout;
+        const loginBtn = document.getElementById('login-btn');
+        const sendBtn = document.getElementById('send-btn');
+        const typingIndicator = document.getElementById('typing-indicator');
+        const mainAppContainer = document.getElementById('mentor-me-app-container'); // Renamed
+        const setupSection = document.getElementById('setup-section');
+        const chatMessagesArea = document.getElementById('chat-messages-area');
+        const chatMessagesDiv = document.getElementById('chat-messages');
+
+        // Mentor Me Skill Selection Elements
+        const skillsSelectionContainer = document.getElementById('skills-selection-container');
+        const othersSkillTag = document.getElementById('others-skill-tag');
+        const customSkillInputContainer = document.getElementById('custom-skill-input-container');
+        const customSkillInput = document.getElementById('custom-skill-input');
+        const selectedSkillsDisplay = document.getElementById('selected-skills-display');
+        const noSkillsSelectedSpan = document.getElementById('no-skills-selected');
+        const selectedSkillsHiddenInput = document.getElementById('selected-skills-hidden-input');
+        let currentSelectedSkills = new Set();
+
+        // Define your API base URLs here for each application
+        const MENTOR_API_BASE_URL = 'http://127.0.0.1:8086'; // Mentor API on port 8086
+        const INTERVIEW_API_BASE_URL = 'http://127.0.0.1:8082'; // Interview Assistant API on port 8082
+
+        // --- GLOBAL VARIABLES (Interview Assistant) ---
+        let interviewConfig = {};
+        let currentQuestionIndex = 0;
+        let questions = [];
+        let timerInterval;
+        let seconds = 0;
+        let score = 0;
+        let report = {};
+        let interviewChatHistory = []; // Separate chat history for interview assistant
+
+        // Interview Assistant DOM Elements (prefixed with 'interview-')
+        const interviewHomePage = document.getElementById('interview-home-page');
+        const interviewConfigPage = document.getElementById('interview-config-page');
+        const interviewPage = document.getElementById('interview-page');
+        const interviewReportPage = document.getElementById('interview-report-page');
+        const interviewLoadingOverlay = document.getElementById('loading-overlay');
+        const interviewToastContainer = document.getElementById('toast-container');
+
+        const interviewStartInterviewBtn = document.getElementById('interview-start-interview-btn');
+        const interviewConfigForm = document.getElementById('interview-config-form');
+        const interviewCategorySelect = document.getElementById('interview-category');
+        const interviewRoleSelect = document.getElementById('interview-role');
+        const interviewDifficultySelect = document.getElementById('interview-difficulty');
+        const interviewDifficultyDetails = document.getElementById('interview-difficulty-details');
+        const interviewBackHomeBtn = document.getElementById('interview-back-home-btn');
+
+        const interviewProgressInfo = document.getElementById('interview-progress-info');
+        const interviewTimer = document.getElementById('interview-timer');
+        const interviewChatMessagesDiv = document.getElementById('interview-chat-messages'); // Renamed
+        const interviewCurrentQuestion = document.getElementById('interview-current-question');
+        const interviewAnswerInput = document.getElementById('interview-answer-input');
+        const interviewSubmitBtn = document.getElementById('interview-submit-btn');
+        const interviewHintBtn = document.getElementById('interview-hint-btn');
+        const interviewSkipBtn = document.getElementById('interview-skip-btn');
+        const interviewEndBtn = document.getElementById('interview-end-btn');
+
+        const interviewReportSummary = document.getElementById('interview-report-summary');
+        const interviewQuestionAnalysis = document.getElementById('interview-question-analysis');
+        const interviewOverallEvaluation = document.getElementById('interview-overall-evaluation');
+        const interviewNewInterviewBtn = document.getElementById('new-interview-btn'); // Corrected ID
+        const interviewDownloadReportBtn = document.getElementById('download-report-btn'); // Corrected ID
+        const interviewBackHomeReportBtn = document.getElementById('back-home-report-btn'); // Corrected ID
+
+        // --- COMMON UI NAVIGATION ---
+        const dashboardSection = document.getElementById('dashboard-section');
+        const mentorMeAppContainer = document.getElementById('mentor-me-app-container');
+        const interviewAssistantAppContainer = document.getElementById('interview-assistant-app-container');
+
+        function showPage(pageId) {
+            const pages = [
+                document.getElementById('login-section'),
+                dashboardSection,
+                mentorMeAppContainer,
+                interviewAssistantAppContainer,
+                interviewHomePage,
+                interviewConfigPage,
+                interviewPage,
+                interviewReportPage
+            ];
+
+            pages.forEach(page => {
+                if (page) { // Check if element exists
+                    if (page.id === pageId) {
+                        page.classList.remove('hidden');
+                        if (page.classList.contains('page') || page.classList.contains('app-container')) {
+                             // For interview assistant pages and app containers, ensure flex display
+                            page.style.display = 'flex';
+                            if (page.id === 'mentor-me-app-container') {
+                                // Specific display for mentor app with sidebar
+                                page.style.flexDirection = 'row';
+                            } else if (page.id === 'interview-assistant-app-container') {
+                                // Specific display for interview app pages
+                                page.style.flexDirection = 'column';
+                            }
+                        }
+                    } else {
+                        page.classList.add('hidden');
+                        page.style.display = 'none'; // Ensure display is none for hidden elements
+                    }
+                }
+            });
+        }
+
+        function showDashboard() {
+            showPage('dashboard-section');
+            // Reset any active states if coming from an app
+            mentorMeAppContainer.classList.add('hidden');
+            interviewAssistantAppContainer.classList.add('hidden');
+        }
+
+        function showMentorMeApp() {
+            showPage('mentor-me-app-container');
+            showSetupSection(); // Default to setup for Mentor Me
+            fetchChats(); // Load past sessions
+        }
+
+        function showInterviewAssistantApp() {
+            showPage('interview-assistant-app-container');
+            showInterviewPage('interview-home-page'); // Start at interview home
+        }
+
+        // --- LOGIN LOGIC ---
+        document.getElementById('toggle-password').addEventListener('click', () => {
+            const pwdInput = document.getElementById('password');
+            if (pwdInput.type === 'password') {
+                pwdInput.type = 'text';
+                document.getElementById('toggle-password').textContent = '🙈';
+            } else {
+                pwdInput.type = 'password';
+                document.getElementById('toggle-password').textContent = '👁️';
+            }
+        });
+
+        async function login() {
+            userId = document.getElementById("userId").value.trim();
+            const password = document.getElementById("password").value;
+            const errorElem = document.getElementById("login-error");
+            errorElem.textContent = "";
+            if (!userId || !password) {
+                errorElem.textContent = "Please enter User ID and Password.";
+                return;
+            }
+
+            loginBtn.disabled = true;
+            loginBtn.textContent = "Logging in...";
+
+            try {
+                const res = await fetch(`${MENTOR_API_BASE_URL}/login`, { // Using MENTOR_API_BASE_URL for login
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({user_id: userId, password})
+                });
+
+                if (res.ok) {
+                    showDashboard(); // Go to dashboard after login
+                    document.getElementById("logged-in-user").textContent = userId;
+
+                    // Pre-fill previous preferences if any in localStorage for Mentor Me
+                    const pref = localStorage.getItem(`prefs_${userId}`);
+                    if (pref) {
+                        try {
+                            const parsed = JSON.parse(pref);
+                            currentSelectedSkills = new Set(parsed.skills || []);
+                            updateSelectedSkillsDisplay();
+
+                            document.querySelectorAll('.skill-tag.predefined').forEach(tag => {
+                                if (currentSelectedSkills.has(tag.dataset.skill)) {
+                                    tag.classList.add('selected');
+                                } else {
+                                    tag.classList.remove('selected');
+                                }
+                            });
+                            const hasNonPredefinedSkill = parsed.skills.some(s => !['Python', 'Machine Learning', 'Data Science', 'AI'].includes(s));
+
+                            if (currentSelectedSkills.has("Others") || hasNonPredefinedSkill) {
+                                othersSkillTag.classList.add('selected');
+                                customSkillInputContainer.classList.remove('hidden');
+                            } else {
+                                othersSkillTag.classList.remove('selected');
+                                customSkillInputContainer.classList.add('hidden');
+                            }
+
+                            if(parsed.difficulty) {
+                                document.getElementById("difficulty").value = parsed.difficulty;
+                            }
+                            if(parsed.role) {
+                                document.getElementById("role").value = parsed.role;
+                            }
+
+                        } catch { /* ignore parse errors */ }
+                    }
+                } else {
+                    errorElem.textContent = "Login failed. Check credentials.";
+                }
+            } catch(e) {
+                errorElem.textContent = "Error connecting to server.";
+                console.error("Login error:", e);
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.textContent = "Login";
+            }
+        }
+
+        // --- DASHBOARD BUTTON LISTENERS ---
+        document.getElementById('mentor-me-choice-btn').addEventListener('click', showMentorMeApp);
+        document.getElementById('interview-me-choice-btn').addEventListener('click', showInterviewAssistantApp);
+
+
+        // --- MENTOR ME APP LOGIC ---
+        function showSetupSection() {
+            setupSection.classList.remove("hidden");
+            chatMessagesArea.classList.add("hidden");
+            chatHistory = []; // Clear chat history
+            currentChatTitle = null;
+            renderMessages(); // Re-render to clear display
+            currentSelectedSkills.clear();
+            updateSelectedSkillsDisplay();
+            document.querySelectorAll('.skill-tag.predefined').forEach(tag => tag.classList.remove('selected'));
+            customSkillInputContainer.classList.add('hidden');
+            customSkillInput.value = "";
+        }
+
+        // Skill Tag Selection for Mentor Me
+        skillsSelectionContainer.addEventListener('click', (event) => {
+            if (event.target.classList.contains('skill-tag')) {
+                const skill = event.target.dataset.skill;
+                if (skill === "Others") {
+                    // Toggle visibility of custom skill input for "Others"
+                    customSkillInputContainer.classList.toggle('hidden');
+                    event.target.classList.toggle('selected');
+                    if (!event.target.classList.contains('selected')) {
+                        // If "Others" is deselected, remove any custom skills and clear input
+                        currentSelectedSkills.forEach(s => {
+                            if (!['Python', 'Machine Learning', 'Data Science', 'AI'].includes(s)) {
+                                currentSelectedSkills.delete(s);
+                            }
+                        });
+                        customSkillInput.value = "";
+                    } else {
+                        // If "Others" is selected, add it to selected skills explicitly if not already there
+                        currentSelectedSkills.add(skill);
+                    }
+                } else {
+                    // For predefined skills, toggle selection
+                    event.target.classList.toggle('selected');
+                    if (event.target.classList.contains('selected')) {
+                        currentSelectedSkills.add(skill);
+                    } else {
+                        currentSelectedSkills.delete(skill);
+                    }
+                }
+                updateSelectedSkillsDisplay();
+            }
+        });
+
+        function addCustomSkill() {
+            const skill = customSkillInput.value.trim();
+            if (skill && !currentSelectedSkills.has(skill)) {
+                currentSelectedSkills.add(skill);
+                updateSelectedSkillsDisplay();
+                customSkillInput.value = '';
+            }
+        }
+
+        function removeSkill(skillToRemove) {
+            currentSelectedSkills.delete(skillToRemove);
+            if (skillToRemove === "Others" && customSkillInputContainer.classList.contains('selected')) {
+                othersSkillTag.classList.remove('selected');
+                customSkillInputContainer.classList.add('hidden');
+                customSkillInput.value = "";
+                // Also remove any truly custom skills if "Others" is deselected
+                currentSelectedSkills.forEach(s => {
+                    if (!['Python', 'Machine Learning', 'Data Science', 'AI'].includes(s)) {
+                        currentSelectedSkills.delete(s);
+                    }
+                });
+            } else if (skillToRemove !== "Others") {
+                document.querySelectorAll('.skill-tag.predefined').forEach(tag => {
+                    if (tag.dataset.skill === skillToRemove) {
+                        tag.classList.remove('selected');
+                    }
+                });
+            }
+            updateSelectedSkillsDisplay();
+        }
+
+        function updateSelectedSkillsDisplay() {
+            selectedSkillsDisplay.innerHTML = '';
+            if (currentSelectedSkills.size === 0) {
+                selectedSkillsDisplay.appendChild(noSkillsSelectedSpan);
+                noSkillsSelectedSpan.classList.remove('hidden');
+            } else {
+                noSkillsSelectedSpan.classList.add('hidden');
+                currentSelectedSkills.forEach(skill => {
+                    const skillItem = document.createElement('span');
+                    skillItem.className = 'selected-skill-item';
+                    skillItem.textContent = skill;
+
+                    const removeBtn = document.createElement('button');
+                    removeBtn.className = 'remove-skill';
+                    removeBtn.innerHTML = '&times;';
+                    removeBtn.onclick = () => removeSkill(skill);
+                    skillItem.appendChild(removeBtn);
+                    selectedSkillsDisplay.appendChild(skillItem);
+                });
+            }
+            // Update the hidden input for form submission if needed (though we're using JS directly)
+            selectedSkillsHiddenInput.value = JSON.stringify(Array.from(currentSelectedSkills));
+        }
+
+        async function fetchChats() {
+            try {
+                const res = await fetch(`${MENTOR_API_BASE_URL}/get_chats?user_id=${encodeURIComponent(userId)}`); // Using MENTOR_API_BASE_URL
+                if (!res.ok) throw new Error("Failed to fetch chats. Status: " + res.status);
+                const data = await res.json();
+                const list = document.getElementById("past-sessions");
+                list.innerHTML = "";
+
+                if (!data.chats || data.chats.length === 0) {
+                    const li = document.createElement("li");
+                    li.textContent = "No previous sessions";
+                    li.style.fontStyle = "italic";
+                    li.style.color = "#666";
+                    list.appendChild(li);
+                    return;
+                }
+
+                data.chats.sort((a, b) => {
+                    const dateA = new Date(a[2] * 1000 || 0); // Convert Unix timestamp (seconds) to milliseconds
+                    const dateB = new Date(b[2] * 1000 || 0);
+                    return dateB - dateA;
+                });
+
+                data.chats.forEach(chat => {
+                    const chatId = chat[0];
+                    const chatTitlePreview = chat[1];
+                    const chatTimestamp = chat[2];
+
+                    const li = document.createElement("li");
+                    li.title = chatTitlePreview || "No Title";
+                    li.onclick = () => loadChat(chatTitlePreview);
+
+                    const titleDiv = document.createElement("div");
+                    titleDiv.className = "session-title";
+                    titleDiv.textContent = chatTitlePreview || "Untitled Session";
+
+                    const metaDiv = document.createElement("div");
+                    metaDiv.className = "session-meta";
+                    // Convert timestamp from seconds to milliseconds for Date constructor
+                    const dt = chatTimestamp ? new Date(chatTimestamp * 1000) : null;
+                    metaDiv.textContent = dt ? dt.toLocaleString() : "No Date";
+
+                    const snippetDiv = document.createElement("div");
+                    snippetDiv.className = "session-snippet";
+                    snippetDiv.textContent = chatTitlePreview || "No preview available.";
+
+                    li.appendChild(titleDiv);
+                    li.appendChild(metaDiv);
+                    li.appendChild(snippetDiv);
+
+                    list.appendChild(li);
+                });
+            } catch (e) {
+                console.error("Error fetching chats:", e);
+                const list = document.getElementById("past-sessions");
+                list.innerHTML = '<li style="color: red; font-style: italic;">Error loading sessions. Please check server.</li>';
+            }
+        }
+
+        async function loadChat(title) {
+            try {
+                const res = await fetch(`${MENTOR_API_BASE_URL}/get_chat_messages?user_id=${encodeURIComponent(userId)}&title=${encodeURIComponent(title)}`); // Using MENTOR_API_BASE_URL
+                if (!res.ok) throw new Error("Failed to load chat messages. Status: " + res.status);
+                const data = await res.json();
+                chatHistory = data.messages || [];
+
+                // When loading a chat, explicitly set isInitialIntro to false for all messages.
+                chatHistory.forEach(msg => {
+                    msg.isInitialIntro = false; // Important: Loaded messages are never the *initial* intro
+                    // Ensure timestamp is a number (if it comes as string from DB)
+                    if (typeof msg.timestamp === 'string') {
+                        msg.timestamp = parseFloat(msg.timestamp);
+                    }
+                });
+
+                currentChatTitle = title;
+                renderMessages();
+
+                setupSection.classList.add("hidden");
+                chatMessagesArea.classList.remove("hidden");
+            } catch (e) {
+                console.error("Error loading chat:", e);
+                alert("Failed to load chat: " + title + ". See console for details.");
+            }
+        }
+
+        async function startSession() {
+            const skills = Array.from(currentSelectedSkills);
+            const difficulty = document.getElementById("difficulty").value;
+            const role = document.getElementById("role").value;
+
+            if (skills.length === 0) {
+                alert("Please select at least one skill.");
+                return;
+            }
+
+            try {
+                sendBtn.disabled = true;
+                sendBtn.textContent = "Starting...";
+                const res = await fetch(`${MENTOR_API_BASE_URL}/start_session`, { // Using MENTOR_API_BASE_URL
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({ user_id: userId, skills, difficulty, role })
+                });
+                if (!res.ok) throw new Error("Failed to start session. Status: " + res.status);
+                const data = await res.json();
+
+                localStorage.setItem(`prefs_${userId}`, JSON.stringify({ skills, difficulty, role }));
+
+                setupSection.classList.add("hidden");
+                chatMessagesArea.classList.remove("hidden");
+
+                currentChatTitle = data.title; // Get the generated unique title
+
+                // Create the initial mentor message object with isInitialIntro: true
+                const introMessage = {
+                    role: "assistant", // Role for mentor
+                    content: data.intro_and_topics,
+                    timestamp: Date.now() / 1000, // Store in seconds to match backend
+                    isInitialIntro: true // Mark as the very first intro message to disable audio
+                };
+                chatHistory = [introMessage]; // Reset history for new session and add intro
+                displayMessage(introMessage); // Display the intro message
+
+                await fetchChats(); // Refresh sidebar to show new session
+            } catch (e) {
+                console.error("Error starting session:", e);
+                alert("Failed to start session: " + e.message + ". Check console for details.");
+            } finally {
+                sendBtn.disabled = false;
+                sendBtn.textContent = "Send";
+            }
+        }
+
+        function renderMessages() {
+            chatMessagesDiv.innerHTML = ''; // Clear existing messages
+            chatHistory.forEach(msg => {
+                // Each msg is already an object like { role, content, timestamp, isInitialIntro }
+                displayMessage(msg);
+            });
+            chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight; // Scroll to bottom
+        }
+
+        // Updated displayMessage to accept a message object
+        function displayMessage(messageObj) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', messageObj.role); // 'user' or 'assistant'
+
+            if (messageObj.role === 'assistant') {
+                messageDiv.classList.add('mentor-icon');
+            }
+
+            const contentSpan = document.createElement('span');
+            contentSpan.textContent = messageObj.content;
+            messageDiv.appendChild(contentSpan);
+
+            // Conditional rendering of the audio button:
+            // Only show if it's an 'assistant' message AND it's NOT explicitly marked as an initial intro message
+            if (messageObj.role === 'assistant' && !messageObj.isInitialIntro) {
+                const audioControl = document.createElement('button');
+                audioControl.classList.add('audio-control');
+                audioControl.innerHTML = '🔊';
+                audioControl.title = 'Listen to this message';
+                audioControl.addEventListener('click', () => playMentorAudio(messageObj.content, audioControl));
+                messageDiv.appendChild(audioControl);
+            }
+
+            const timeSpan = document.createElement('time');
+            // Convert Unix timestamp (seconds) to milliseconds for Date constructor
+            const date = messageObj.timestamp ? new Date(messageObj.timestamp * 1000) : new Date();
+            timeSpan.textContent = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            messageDiv.appendChild(timeSpan);
+
+            chatMessagesDiv.appendChild(messageDiv);
+            chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const userInput = document.getElementById('user-input');
+            const messageText = userInput.value.trim();
+            if (messageText === '') return;
+
+            if (!userId) {
+                alert("Please login first.");
+                return;
+            }
+            if (!currentChatTitle) {
+                alert("Please start a new session or load a previous one first.");
+                return;
+            }
+
+            // Create the user message object
+            const userMessageObject = {
+                role: "user",
+                content: messageText,
+                timestamp: Date.now() / 1000 // Store in seconds to match backend
+            };
+
+            // Display user message immediately
+            displayMessage(userMessageObject);
+            // Add user message to local chat history (this will be sent to backend)
+            chatHistory.push(userMessageObject);
+
+            userInput.value = '';
+            userInput.style.height = 'auto';
+
+            sendBtn.disabled = true;
+            typingIndicator.classList.remove('hidden');
+
+            try {
+                // Construct the payload to match backend's ChatRequest model
+                const response = await fetch(`${MENTOR_API_BASE_URL}/chat`, { // Using MENTOR_API_BASE_URL
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        chat_title: currentChatTitle,
+                        chat_history: chatHistory // Send the full chat history
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    const mentorResponse = data.reply; // Backend returns 'reply'
+                    const mentorMessageObject = {
+                        role: "assistant", // Role for mentor
+                        content: mentorResponse,
+                        timestamp: Date.now() / 1000, // Store in seconds
+                        isInitialIntro: false // This is not the very first intro
+                    };
+                    displayMessage(mentorMessageObject);
+                    chatHistory.push(mentorMessageObject); // Add mentor's reply to local history
+
+                    await fetchChats(); // Refresh sidebar to show updated session
+                } else {
+                    // Improved error message parsing from FastAPI's 422 detail
+                    let errorMessage = "Unknown error.";
+                    if (response.status === 422 && data && data.detail) {
+                        errorMessage = Array.isArray(data.detail) ?
+                                       data.detail.map(err => `${err.loc.join('.')}: ${err.msg}`).join('; ') :
+                                       data.detail;
+                    } else if (data && data.detail) { // Other HTTP errors with a detail field
+                        errorMessage = data.detail;
+                    } else if (data && data.message) { // Fallback for custom backend messages
+                        errorMessage = data.message;
+                    } else { // Generic HTTP status message
+                        errorMessage = `Server responded with status ${response.status}.`;
+                    }
+                    displayMessage({ role: 'assistant', content: `Error: ${errorMessage}`, timestamp: Date.now() / 1000 });
+                }
+            } catch (error) {
+                console.error('Error sending message:', error);
+                displayMessage({ role: 'assistant', content: 'Failed to get a response from the mentor. Please try again.', timestamp: Date.now() / 1000 });
+            } finally {
+                sendBtn.disabled = false;
+                typingIndicator.classList.add('hidden');
+            }
+        }
+
+        async function playMentorAudio(text, buttonElement) {
+            buttonElement.disabled = true;
+            buttonElement.textContent = '...';
+
+            try {
+                const encodedText = encodeURIComponent(text);
+                const audioRequestUrl = `${MENTOR_API_BASE_URL}/text_to_speech_direct?text=${encodedText}`; // Using MENTOR_API_BASE_URL
+
+                const res = await fetch(audioRequestUrl, {
+                    method: "GET",
+                });
+
+                if (!res.ok) {
+                    const errorText = await res.text();
+                    throw new Error(`Failed to get audio: ${res.status} - ${errorText}`);
+                }
+
+                const audioBlob = await res.blob();
+
+                if (audioBlob.size === 0) {
+                    throw new Error("Received empty audio file from server.");
+                }
+
+                const audioUrl = URL.createObjectURL(audioBlob);
+
+                const audio = new Audio(audioUrl);
+                audio.onended = () => {
+                    buttonElement.disabled = false;
+                    buttonElement.textContent = '🔊';
+                    URL.revokeObjectURL(audioUrl);
+                };
+                audio.onerror = (e) => {
+                    console.error("Audio playback error event:", e);
+                    buttonElement.disabled = false;
+                    buttonElement.textContent = '🔊';
+                    alert("Failed to play audio. Check console for details.");
+                    URL.revokeObjectURL(audioUrl);
+                };
+
+                await audio.play().catch(playError => {
+                    console.error("audio.play() Promise rejected (likely autoplay policy):", playError);
+                    alert("Audio playback might be blocked by your browser's autoplay policy. Please try again or check browser settings.");
+                    buttonElement.disabled = false;
+                    buttonElement.textContent = '🔊';
+                });
+
+            } catch (error) {
+                console.error("Error in playMentorAudio catch block:", error);
+                alert("Could not play audio: " + error.message);
+                buttonElement.disabled = false;
+                buttonElement.textContent = '🔊';
+            }
+        }
+
+        // --- INTERVIEW ASSISTANT APP LOGIC (from config.js and script.js) ---
+
+        // Config data for roles and difficulties (from config.js)
+        const interviewConfigData = {
+            technical: {
+                roles: {
+                    "Software Engineer": {
+                        beginner: "Focus on fundamental data structures, algorithms (arrays, linked lists, basic sorting), and object-oriented programming concepts. Questions will be straightforward and test basic understanding.",
+                        intermediate: "Expect questions on more complex data structures (trees, graphs, hash tables), advanced algorithms (dynamic programming, greedy algorithms), system design basics, and common design patterns. Problem-solving skills will be tested.",
+                        advanced: "Deep dive into complex algorithm design, distributed systems, scalability, concurrency, and advanced architectural patterns. Expect open-ended problems requiring critical thinking and trade-off analysis."
+                    },
+                    "Data Scientist": {
+                        beginner: "Basic statistics, probability, data cleaning, exploratory data analysis, and fundamental machine learning concepts (linear regression, classification basics). Focus on conceptual understanding and simple data manipulation.",
+                        intermediate: "More advanced statistical modeling, machine learning algorithms (ensemble methods, neural network basics), feature engineering, model evaluation metrics, and practical application of data science tools. Expect case studies and interpretation of results.",
+                        advanced: "Advanced machine learning (deep learning architectures, NLP, computer vision), experimental design, A/B testing, MLOps concepts, and ethical considerations in AI. Focus on complex problem-solving and real-world deployment challenges."
+                    },
+                    "DevOps Engineer": {
+                        beginner: "Basic Linux commands, version control (Git), understanding of CI/CD concepts, and fundamental cloud concepts (IaaS, PaaS). Questions will cover basic automation and infrastructure management.",
+                        intermediate: "Containerization (Docker), orchestration (Kubernetes basics), cloud services (AWS/Azure/GCP core services), scripting (Python/Bash), and monitoring/logging tools. Expect questions on building and deploying scalable applications.",
+                        advanced: "Advanced Kubernetes, serverless architectures, infrastructure as code (Terraform/Ansible), security best practices in DevOps, disaster recovery, and performance optimization. Focus on designing robust and resilient systems."
+                    }
+                }
+            },
+            non_technical: {
+                roles: {
+                    "Project Manager": {
+                        beginner: "Basic project lifecycle, common methodologies (Agile, Waterfall), stakeholder identification, and risk management fundamentals. Questions will assess understanding of project initiation and planning.",
+                        intermediate: "Project planning and execution, team leadership, conflict resolution, advanced risk management, and communication strategies. Expect scenario-based questions on managing project challenges.",
+                        advanced: "Strategic project management, portfolio management, change management, organizational leadership, and driving innovation. Focus on complex program delivery and organizational transformation."
+                    },
+                    "HR Specialist": {
+                        beginner: "Basic HR functions (recruitment, onboarding, compensation basics), labor laws, and employee relations fundamentals. Questions will cover foundational HR practices.",
+                        intermediate: "Talent acquisition strategies, performance management, employee development, HR analytics, and compliance. Expect questions on handling HR challenges and implementing policies.",
+                        advanced: "Strategic HR planning, organizational development, succession planning, diversity & inclusion initiatives, and HR technology. Focus on shaping organizational culture and driving human capital strategies."
+                    }
+                }
+            }
+        };
+
+        // --- Interview Assistant Functions (from script.js) ---
+
+        // Function to show a specific page and hide others
+        function showInterviewPage(pageToShowId) {
+            const pages = [interviewHomePage, interviewConfigPage, interviewPage, interviewReportPage];
+            pages.forEach(page => {
+                if (page) {
+                    if (page.id === pageToShowId) {
+                        page.classList.add('active');
+                    } else {
+                        page.classList.remove('active');
+                    }
+                }
+            });
+        }
+
+        // Populate roles based on category selection
+        interviewCategorySelect.addEventListener('change', () => {
+            const category = interviewCategorySelect.value;
+            interviewRoleSelect.innerHTML = '<option value="">Select Role</option>'; // Clear existing options
+            if (category && interviewConfigData[category]) {
+                for (const role in interviewConfigData[category].roles) {
+                    const option = document.createElement('option');
+                    option.value = role;
+                    option.textContent = role;
+                    interviewRoleSelect.appendChild(option);
+                }
+            }
+            interviewDifficultySelect.value = ""; // Reset difficulty
+            interviewDifficultyDetails.textContent = ""; // Clear details
+        });
+
+        // Display difficulty details
+        interviewDifficultySelect.addEventListener('change', () => {
+            const category = interviewCategorySelect.value;
+            const role = interviewRoleSelect.value;
+            const difficulty = interviewDifficultySelect.value;
+
+            if (category && role && difficulty && interviewConfigData[category] && interviewConfigData[category].roles[role]) {
+                interviewDifficultyDetails.textContent = interviewConfigData[category].roles[role][difficulty] || "";
+            } else {
+                interviewDifficultyDetails.textContent = "";
+            }
+        });
+
+        // Event Listeners for Interview Assistant Navigation
+        interviewStartInterviewBtn.addEventListener('click', () => showInterviewPage('interview-config-page'));
+        interviewBackHomeBtn.addEventListener('click', () => showInterviewPage('interview-home-page'));
+        interviewNewInterviewBtn.addEventListener('click', () => {
+            resetInterview();
+            showInterviewPage('interview-config-page');
+        });
+        interviewBackHomeReportBtn.addEventListener('click', () => showInterviewPage('interview-home-page'));
+
+        // Handle config form submission
+        interviewConfigForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            interviewConfig = {
+                category: interviewCategorySelect.value,
+                role: interviewRoleSelect.value,
+                difficulty: interviewDifficultySelect.value
+            };
+
+            if (!interviewConfig.category || !interviewConfig.role || !interviewConfig.difficulty) {
+                showToast("Please select all interview parameters.", "error");
+                return;
+            }
+
+            showLoadingOverlay("Starting interview...");
+            try {
+                const response = await fetch(`${INTERVIEW_API_BASE_URL}/interview/start`, { // Using INTERVIEW_API_BASE_URL
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: userId, // Pass userId from main login
+                        category: interviewConfig.category,
+                        role: interviewConfig.role,
+                        difficulty: interviewConfig.difficulty
+                    })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    questions = data.questions;
+                    interviewChatHistory = []; // Clear previous chat history for interview
+                    currentQuestionIndex = 0;
+                    seconds = 0;
+                    score = 0;
+                    report = {};
+                    startTimer();
+                    displayInterviewQuestion();
+                    showInterviewPage('interview-page');
+                    hideLoadingOverlay();
+                    showToast("Interview started!", "success");
+                } else {
+                    showToast(`Error starting interview: ${data.detail || data.message || 'Unknown error'}`, "error");
+                    hideLoadingOverlay();
+                }
+            } catch (error) {
+                console.error('Error starting interview:', error);
+                showToast("Failed to connect to interview backend.", "error");
+                hideLoadingOverlay();
+            }
+        });
+
+        // Display current question
+        function displayInterviewQuestion() {
+            if (questions.length > 0 && currentQuestionIndex < questions.length) {
+                const question = questions[currentQuestionIndex];
+                interviewCurrentQuestion.textContent = `Q${currentQuestionIndex + 1}: ${question.question}`;
+                interviewAnswerInput.value = '';
+                updateProgressInfo();
+                addInterviewChatMessage('interviewer', `Q${currentQuestionIndex + 1}: ${question.question}`);
+            } else {
+                endInterview();
+            }
+        }
+
+        // Update progress info
+        function updateProgressInfo() {
+            interviewProgressInfo.textContent = `Question ${currentQuestionIndex + 1} of ${questions.length}`;
+        }
+
+        // Start timer
+        function startTimer() {
+            clearInterval(timerInterval);
+            seconds = 0;
+            interviewTimer.textContent = "00:00";
+            timerInterval = setInterval(() => {
+                seconds++;
+                const minutes = Math.floor(seconds / 60);
+                const remainingSeconds = seconds % 60;
+                interviewTimer.textContent = `${minutes < 10 ? '0' : ''}${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
+            }, 1000);
+        }
+
+        // Stop timer
+        function stopTimer() {
+            clearInterval(timerInterval);
+        }
+
+        // Add chat message for interview
+        function addInterviewChatMessage(sender, message) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('chat-message', sender);
+            messageDiv.textContent = message;
+            interviewChatMessagesDiv.appendChild(messageDiv);
+            interviewChatMessagesDiv.scrollTop = interviewChatMessagesDiv.scrollHeight;
+            interviewChatHistory.push({ role: sender, content: message });
+        }
+
+        // Submit Answer
+        interviewSubmitBtn.addEventListener('click', async () => {
+            const answer = interviewAnswerInput.value.trim();
+            if (!answer) {
+                showToast("Please provide an answer.", "warning");
+                return;
+            }
+
+            stopTimer(); // Stop timer while processing
+            showLoadingOverlay("Evaluating answer...");
+
+            try {
+                const currentQuestion = questions[currentQuestionIndex];
+                addInterviewChatMessage('candidate', `Your Answer: ${answer}`); // Add user's answer to chat
+
+                const response = await fetch(`${INTERVIEW_API_BASE_URL}/interview/submit_answer`, { // Using INTERVIEW_API_BASE_URL
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: userId, // Pass userId
+                        question_id: currentQuestion.id,
+                        answer: answer,
+                        category: interviewConfig.category,
+                        role: interviewConfig.role,
+                        difficulty: interviewConfig.difficulty
+                    })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    addInterviewChatMessage('interviewer', `Feedback: ${data.feedback}`);
+                    score += data.score; // Assuming score is returned
+                    currentQuestionIndex++;
+                    displayInterviewQuestion();
+                    startTimer(); // Restart timer for next question
+                    hideLoadingOverlay();
+                    showToast("Answer submitted!", "success");
+                } else {
+                    showToast(`Error submitting answer: ${data.detail || data.message || 'Unknown error'}`, "error");
+                    hideLoadingOverlay();
+                    startTimer(); // Restart timer on error
+                }
+            } catch (error) {
+                console.error('Error submitting answer:', error);
+                showToast("Failed to connect to interview backend.", "error");
+                hideLoadingOverlay();
+                startTimer(); // Restart timer on error
+            }
+        });
+
+        // Get Hint
+        interviewHintBtn.addEventListener('click', async () => {
+            showLoadingOverlay("Getting hint...");
+            try {
+                const currentQuestion = questions[currentQuestionIndex];
+                const response = await fetch(`${INTERVIEW_API_BASE_URL}/interview/hint`, { // Using INTERVIEW_API_BASE_URL
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        question_id: currentQuestion.id,
+                        category: interviewConfig.category,
+                        role: interviewConfig.role,
+                        difficulty: interviewConfig.difficulty
+                    })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    addInterviewChatMessage('interviewer', `Hint: ${data.hint}`);
+                    hideLoadingOverlay();
+                    showToast("Hint provided!", "info");
+                } else {
+                    showToast(`Error getting hint: ${data.detail || data.message || 'Unknown error'}`, "error");
+                    hideLoadingOverlay();
+                }
+            } catch (error) {
+                console.error('Error getting hint:', error);
+                showToast("Failed to connect to interview backend.", "error");
+                hideLoadingOverlay();
+            }
+        });
+
+        // Skip Question
+        interviewSkipBtn.addEventListener('click', () => {
+            addInterviewChatMessage('candidate', 'Skipped this question.');
+            currentQuestionIndex++;
+            displayInterviewQuestion();
+            startTimer(); // Restart timer for next question
+            showToast("Question skipped.", "info");
+        });
+
+        // End Interview
+        interviewEndBtn.addEventListener('click', () => endInterview());
+
+        async function endInterview() {
+            stopTimer();
+            showLoadingOverlay("Generating report...");
+
+            try {
+                const response = await fetch(`${INTERVIEW_API_BASE_URL}/interview/end`, { // Using INTERVIEW_API_BASE_URL
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        interview_config: interviewConfig,
+                        total_score: score,
+                        interview_duration: seconds,
+                        chat_history: interviewChatHistory // Send interview-specific chat history
+                    })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    report = data.report; // Assuming backend returns a structured report
+                    displayReport();
+                    showInterviewPage('interview-report-page');
+                    hideLoadingOverlay();
+                    showToast("Interview ended. Report generated!", "success");
+                } else {
+                    showToast(`Error ending interview: ${data.detail || data.message || 'Unknown error'}`, "error");
+                    hideLoadingOverlay();
+                }
+            } catch (error) {
+                console.error('Error ending interview:', error);
+                showToast("Failed to connect to interview backend.", "error");
+                hideLoadingOverlay();
+            }
+        }
+
+        // Display Report
+        function displayReport() {
+            if (!report) {
+                interviewReportSummary.textContent = "No report available.";
+                interviewQuestionAnalysis.innerHTML = "";
+                interviewOverallEvaluation.innerHTML = "";
+                return;
+            }
+
+            interviewReportSummary.textContent = `Overall Score: ${report.total_score || 'N/A'}`;
+
+            // Question Analysis
+            interviewQuestionAnalysis.innerHTML = '<h3>Question Analysis</h3>';
+            if (report.question_feedback && report.question_feedback.length > 0) {
+                report.question_feedback.forEach((q, index) => {
+                    const qDiv = document.createElement('div');
+                    qDiv.innerHTML = `
+                        <h4>Q${index + 1}: ${q.question}</h4>
+                        <p><strong>Your Answer:</strong> ${q.answer}</p>
+                        <p><strong>Feedback:</strong> ${q.feedback}</p>
+                        <p><strong>Score:</strong> ${q.score || 'N/A'}</p>
+                        <hr>
+                    `;
+                    interviewQuestionAnalysis.appendChild(qDiv);
+                });
+            } else {
+                interviewQuestionAnalysis.innerHTML += '<p>No detailed question analysis available.</p>';
+            }
+
+            // Overall Evaluation
+            interviewOverallEvaluation.innerHTML = '<h3>Overall Evaluation</h3>';
+            interviewOverallEvaluation.innerHTML += `<p>${report.overall_feedback || 'No overall feedback available.'}</p>`;
+        }
+
+        // Reset Interview State
+        function resetInterview() {
+            interviewConfig = {};
+            currentQuestionIndex = 0;
+            questions = [];
+            seconds = 0;
+            score = 0;
+            report = {};
+            interviewChatHistory = [];
+            clearInterval(timerInterval);
+            interviewTimer.textContent = "00:00";
+            interviewCurrentQuestion.textContent = "";
+            interviewAnswerInput.value = "";
+            interviewChatMessagesDiv.innerHTML = "";
+            interviewReportSummary.textContent = "";
+            interviewQuestionAnalysis.innerHTML = "";
+            interviewOverallEvaluation.innerHTML = "";
+            interviewCategorySelect.value = "";
+            interviewRoleSelect.innerHTML = '<option value="">Select Role</option>';
+            interviewDifficultySelect.value = "";
+            interviewDifficultyDetails.textContent = "";
+        }
+
+        // Loading Overlay functions
+        function showLoadingOverlay(message) {
+            interviewLoadingOverlay.classList.remove('hidden');
+            document.querySelector('#loading-overlay .loading-text').textContent = message;
+        }
+
+        function hideLoadingOverlay() {
+            interviewLoadingOverlay.classList.add('hidden');
+        }
+
+        // Toast Notification function
+        function showToast(message, type = "info") {
+            const toast = document.createElement('div');
+            toast.classList.add('toast', type);
+            toast.textContent = message;
+            interviewToastContainer.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.add('show');
+            }, 10); // Small delay to trigger transition
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+                toast.addEventListener('transitionend', () => toast.remove());
+            }, 3000);
+        }
+
+        // Download Report (Placeholder)
+        interviewDownloadReportBtn.addEventListener('click', () => {
+            showToast("Download report functionality coming soon!", "info");
+            // You would implement actual report generation (e.g., PDF or text file) here
+        });
+
+        // Initial setup on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            showPage('login-section'); // Start at the login page
+            updateSelectedSkillsDisplay(); // Initialize Mentor Me skill display
+            resetInterview(); // Initialize Interview Assistant state
+        });
+
+    </script>
+</body>
+</html>
