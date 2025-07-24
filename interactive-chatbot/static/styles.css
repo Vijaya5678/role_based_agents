@@ -1,0 +1,46 @@
+General Body Styles
+body {
+    background-color: #f0f2f6;
+    color: #333;
+}
+
+/* Main Chat Container */
+.stApp {
+    background-color: #ffffff;
+    border-radius: 15px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    padding: 2rem;
+}
+
+/* Chat Messages */
+.stChatMessage {
+    border-radius: 10px;
+    padding: 1rem 1.5rem;
+    margin-bottom: 1rem;
+}
+
+/* Buttons */
+.stButton>button {
+    border-radius: 20px;
+    border: 1px solid #4A90E2;
+    background-color: #4A90E2;
+    color: white;
+    padding: 10px 24px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin: 4px 2px;
+    cursor: pointer;
+    transition-duration: 0.4s;
+}
+
+.stButton>button:hover {
+    background-color: white;
+    color: #4A90E2;
+}
+
+/* Chat Input */
+.stChatInput>div>div>textarea {
+    border-radius: 20px;
+}
