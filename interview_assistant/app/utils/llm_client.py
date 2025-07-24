@@ -1,9 +1,11 @@
 # app/utils/llm_client.py
 import anyio
 import json
+import re # Import re at the top
 from .connection import Connection
 
 class LLMClient:
+    # ... (keep __init__, call_sync, chat, generate_questions, evaluate_answer as they are) ...
     def __init__(self):
         self._llm = Connection().get_llm()
 
@@ -57,7 +59,6 @@ class LLMClient:
         # If no questions found with above parsing, try different approach
         if not questions:
             # Split by double newlines or numbered patterns
-            import re
             question_patterns = re.findall(r'\d+\.\s*(.+?)(?=\d+\.|$)', response, re.DOTALL)
             for q in question_patterns:
                 clean_q = q.strip().replace('\n', ' ')
@@ -85,13 +86,17 @@ class LLMClient:
         
         response = await self.chat(prompt)
         try:
-            return json.loads(response)
+            # Find the JSON part of the response
+            json_match = re.search(r'\{.*\}', response, re.DOTALL)
+            if json_match:
+                return json.loads(json_match.group())
+            raise ValueError("No JSON found")
         except:
             # Fallback if JSON parsing fails
             return {
                 "score": 5,
                 "verdict": "partial",
-                "feedback": response
+                "feedback": "Could not parse evaluation, but the answer was submitted."
             }
 
     async def generate_hint(self, question: str, config: dict):
@@ -107,5 +112,19 @@ class LLMClient:
         return await self.chat(prompt)
 
     async def generate_report(self, prompt: str):
-        """Generate overall interview report"""
-        return await self.chat(prompt)
+        """Generate overall interview report and parse it as JSON."""
+        response = await self.chat(prompt)
+        try:
+            # Use regex to find the JSON block, as LLMs sometimes add extra text
+            json_match = re.search(r'\{.*\}', response, re.DOTALL)
+            if json_match:
+                return json.loads(json_match.group())
+            raise ValueError("No JSON object found in the LLM response.")
+        except Exception as e:
+            # Fallback if JSON parsing fails
+            print(f"Error parsing report JSON: {e}\nResponse was: {response}")
+            return {
+                "overall_score": 0,
+                "strengths": "Not available due to a formatting error.",
+                "areas_for_improvement": "Could not be generated."
+            }

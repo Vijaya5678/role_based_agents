@@ -1,4 +1,5 @@
 # app/services/report_service.py
+import json
 from datetime import datetime
 from interview_assistant.app.utils.llm_client import LLMClient
 
@@ -9,25 +10,36 @@ class ReportService:
     async def generate_report(self, session, answers):
         """
         Generate comprehensive report after quiz completion.
+        'session' is the InterviewSession Pydantic model.
         """
-        # Build question-by-question summary string
         summary = ""
         for i, ans in enumerate(answers, 1):
             summary += (
                 f"Q{i}: {ans['question']}\n"
-                f"Answer: {ans['answer']}\n"
-                f"Score: {ans['evaluation']['score']}\n"
-                f"Feedback: {ans['evaluation']['feedback']}\n\n"
+                f"Answer: {ans.get('answer', 'Not answered')}\n"
+                f"Score: {ans.get('evaluation', {}).get('score', 'N/A')}\n"
+                f"Feedback: {ans.get('evaluation', {}).get('feedback', 'N/A')}\n\n"
             )
 
+        # FIX: Access Pydantic model attributes correctly (e.g., session.config.role)
         overall_prompt = f"""
         Analyze the overall interview performance for a {session.config.role} position
         with difficulty level {session.config.difficulty}.
 
-        Question Summary:
+        Question-by-Question Summary:
         {summary}
 
-        Provide an overall score (1-10), strengths, weaknesses, and areas for improvement.
+        Based on the summary, provide a final evaluation. Your entire response MUST be a single JSON object with the following keys:
+        - "overall_score": An integer score from 1 to 10.
+        - "strengths": A string summarizing the candidate's strengths.
+        - "areas_for_improvement": A string summarizing the candidate's areas for improvement.
+        
+        Example JSON:
+        {{
+            "overall_score": 7,
+            "strengths": "Demonstrated solid understanding of core concepts and provided clear answers to several questions.",
+            "areas_for_improvement": "Could provide more detailed examples in practical scenarios and should review advanced topics."
+        }}
         """
 
         overall_evaluation = await self.llm_client.generate_report(overall_prompt)

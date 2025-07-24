@@ -1,7 +1,7 @@
 // API Configuration
 const API_CONFIG = {
     // FIX: The base URL must include the full prefix from your FastAPI router.
-    BASE_URL: 'http://localhost:8081/api/interview',
+    BASE_URL: 'http://localhost:8082/api/interview',
     TIMEOUT: 30000
 };
 

@@ -45,7 +45,6 @@
     const newInterviewBtn = document.getElementById('new-interview-btn');
     const backHomeReportBtn = document.getElementById('back-home-report-btn');
 
-
     // --- UTILITY FUNCTIONS ---
 
     function showPage(pageId) {
@@ -66,23 +65,46 @@
     }
 
     async function apiClient(endpoint, method = 'GET', body = null) {
+        console.log(`API Call: ${method} ${API_CONFIG.BASE_URL}${endpoint}`);
+        if (body) {
+            console.log('Request body:', body);
+        }
+        
         showLoading(true);
         try {
             const options = {
                 method,
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
             };
             if (body) {
                 options.body = JSON.stringify(body);
             }
+            
             const response = await fetch(`${API_CONFIG.BASE_URL}${endpoint}`, options);
+            
+            console.log(`Response status: ${response.status}`);
+            
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.detail || 'An API error occurred');
+                let errorMessage = `HTTP ${response.status}`;
+                try {
+                    const errorData = await response.json();
+                    errorMessage = errorData.detail || errorData.message || errorMessage;
+                } catch (e) {
+                    errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+                }
+                throw new Error(errorMessage);
             }
-            return await response.json();
+            
+            const data = await response.json();
+            console.log('Response data:', data);
+            return data;
+            
         } catch (error) {
-            showToast(error.message, 'error');
+            console.error('API Error:', error);
+            showToast(`API Error: ${error.message}`, 'error');
             return null;
         } finally {
             showLoading(false);
@@ -145,66 +167,89 @@
     }
     
     function displayQuestion(data) {
+        console.log('Displaying question:', data);
         if (!data || !data.question_text) {
-             endInterview("end") // End if no more questions
-             return
+            console.log('No question data, ending interview');
+            endInterview("end");
+            return;
         }
         progressInfo.textContent = `Question ${data.question_number} of ${data.total_questions}`;
         currentQuestionBox.innerHTML = `<strong>Q:</strong> ${data.question_text}`;
         answerInput.value = '';
+        answerInput.focus();
     }
     
     function addChatMessage(message, sender = 'assistant') {
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${sender}`;
-        messageDiv.innerHTML = message; // Use innerHTML to render formatted text
+        messageDiv.innerHTML = message;
         chatMessages.appendChild(messageDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
     
     async function handleAnswerSubmission(action) {
+        if (!appState.sessionId) {
+            showToast('No active session found', 'error');
+            return;
+        }
+
         const payload = { 
             session_id: appState.sessionId,
-            answer: answerInput.value,
+            answer: answerInput.value.trim(),
             action: action,
         };
 
         const response = await apiClient(`/${appState.sessionId}/submit-answer`, 'POST', payload);
 
         if (response) {
-            if (action === 'submit') {
-                addChatMessage(`<strong>Your Answer:</strong> ${answerInput.value}`, 'user');
+            if (action === 'submit' && payload.answer) {
+                addChatMessage(`<strong>Your Answer:</strong> ${payload.answer}`, 'user');
                 if(response.evaluation) {
                     addChatMessage(`<strong>Feedback:</strong> ${response.evaluation.feedback} (Score: ${response.evaluation.score}/10)`);
                 }
             }
+            
             if (response.hint) {
                 addChatMessage(`<strong>Hint:</strong> ${response.hint}`);
             }
+            
             if (response.next_question) {
                 displayQuestion(response.next_question);
             }
+            
             if (response.report) {
                 renderReport(response.report);
                 showPage('report');
             }
-            if (response.message && response.message.includes("completed")) {
-                showToast("Interview finished!");
-                if(!response.report){ // fetch report if not included
-                    const reportData = await apiClient(`/${appState.sessionId}/report`);
-                    if(reportData) renderReport(reportData);
+            
+            if (response.message) {
+                if (response.message.includes("completed") || response.message.includes("ended")) {
+                    showToast("Interview finished!");
+                    if (!response.report) {
+                        const reportData = await apiClient(`/${appState.sessionId}/report`);
+                        if (reportData) {
+                            renderReport(reportData);
+                            showPage('report');
+                        }
+                    }
                 }
             }
         }
     }
     
     async function endInterview(action) {
+        if (!appState.sessionId) {
+            showToast('No active session found', 'error');
+            return;
+        }
+        
         clearInterval(appState.timerInterval);
         const response = await apiClient(`/${appState.sessionId}/report`);
         if (response) {
             renderReport(response);
+            showPage('report');
         } else {
-           showToast("Could not fetch the report.", "error")
+            showToast("Could not fetch the report.", "error");
         }
     }
     
@@ -223,7 +268,7 @@
         // Question Analysis
         questionAnalysis.innerHTML = '<h3>Question-by-Question Analysis</h3>';
         report.questions.forEach((q, index) => {
-            const score = q.evaluation.score;
+            const score = q.evaluation.score || 0;
             let scoreClass = 'score-fair';
             if (score >= 8) scoreClass = 'score-excellent';
             else if (score >= 5) scoreClass = 'score-good';
@@ -232,7 +277,7 @@
                 <div class="question-item">
                     <p><strong>Q${index + 1}:</strong> ${q.question} <span class="score-badge ${scoreClass}">${score}/10</span></p>
                     <p><strong>Answer:</strong> ${q.answer || '<em>Not answered</em>'}</p>
-                    <p><strong>Feedback:</strong> ${q.evaluation.feedback}</p>
+                    <p><strong>Feedback:</strong> ${q.evaluation.feedback || 'No feedback available'}</p>
                 </div>
             `;
         });
@@ -240,8 +285,8 @@
         // Overall Evaluation
         overallEvaluation.innerHTML = `
             <h3>Final Evaluation</h3>
-            <p><strong>Strengths:</strong> ${report.final_evaluation.strengths}</p>
-            <p><strong>Areas for Improvement:</strong> ${report.final_evaluation.areas_for_improvement}</p>
+            <p><strong>Strengths:</strong> ${report.final_evaluation.strengths || 'Not available'}</p>
+            <p><strong>Areas for Improvement:</strong> ${report.final_evaluation.areas_for_improvement || 'Not available'}</p>
         `;
         
         showPage('report');
@@ -250,51 +295,102 @@
     // --- EVENT LISTENERS ---
 
     document.addEventListener('DOMContentLoaded', () => {
+        console.log('DOM loaded, initializing app...');
         showPage('home');
         
-        startInterviewBtn.addEventListener('click', () => showPage('config'));
+        // Navigation event listeners
+        startInterviewBtn.addEventListener('click', () => {
+            console.log('Start interview button clicked');
+            showPage('config');
+        });
+        
         backHomeBtn.addEventListener('click', () => showPage('home'));
         backHomeReportBtn.addEventListener('click', () => showPage('home'));
+        
         newInterviewBtn.addEventListener('click', () => {
-             // Reset form for new interview
+            // Reset form for new interview
             configForm.reset();
             difficultyDetails.style.display = 'none';
             roleSelect.innerHTML = '<option value="">Select Role</option>';
             showPage('config');
         });
 
+        // Form event listeners
         categorySelect.addEventListener('change', populateRoles);
         difficultySelect.addEventListener('change', updateDifficultyDetails);
 
+        // Main form submission
         configForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            console.log('Form submitted');
+            
             const config = {
                 category: categorySelect.value,
                 role: roleSelect.value,
                 difficulty: difficultySelect.value,
             };
             
+            console.log('Interview config:', config);
+            
+            // Validate form
+            if (!config.category || !config.role || !config.difficulty) {
+                showToast('Please fill in all fields', 'error');
+                return;
+            }
+            
+            // Start the interview
             const sessionData = await apiClient('/start', 'POST', config);
             
-            if (sessionData) {
+            if (sessionData && sessionData.session_id) {
+                console.log('Session created:', sessionData);
                 appState.sessionId = sessionData.session_id;
                 showPage('interview');
                 startTimer(sessionData.time_limit_minutes);
                 
+                // Clear previous messages
+                chatMessages.innerHTML = '';
+                
                 // Fetch first question
                 const questionData = await apiClient(`/${appState.sessionId}/current-question`);
-                if(questionData) displayQuestion(questionData);
+                if (questionData) {
+                    displayQuestion(questionData);
+                } else {
+                    showToast('Failed to load first question', 'error');
+                }
+            } else {
+                showToast('Failed to start interview session', 'error');
             }
         });
 
-        submitBtn.addEventListener('click', () => handleAnswerSubmission('submit'));
+        // Interview action buttons
+        submitBtn.addEventListener('click', () => {
+            if (!answerInput.value.trim()) {
+                showToast('Please enter an answer before submitting', 'warning');
+                return;
+            }
+            handleAnswerSubmission('submit');
+        });
+        
         hintBtn.addEventListener('click', () => handleAnswerSubmission('hint'));
         skipBtn.addEventListener('click', () => handleAnswerSubmission('skip'));
+        
         endBtn.addEventListener('click', () => {
-            if(confirm('Are you sure you want to end the interview?')) {
+            if (confirm('Are you sure you want to end the interview?')) {
                 endInterview('end');
             }
         });
+
+        // Add Enter key support for answer submission
+        answerInput.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'Enter') {
+                e.preventDefault();
+                if (answerInput.value.trim()) {
+                    handleAnswerSubmission('submit');
+                }
+            }
+        });
+
+        console.log('App initialization complete');
     });
 
 })();
