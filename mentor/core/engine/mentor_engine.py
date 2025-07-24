@@ -1,147 +1,270 @@
 # mentor/core/engine/mentor_engine.py
 
-import os
 import json
 import re
-from crewai import LLM
-from datetime import datetime
-from typing import Optional
-from crewai import Crew, Task
-from mentor.core.agent.mentor_agent import create_mentor_agent
+import os
+import sys
+import traceback # Added for detailed error reporting
+from typing import Optional, Tuple, List, Dict, Any
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..")))
+
+# FIX: Changed to relative import for Connection.py
 from connection import Connection
-
-
-def safe_filename(title: str, max_length=100) -> str:
-    safe_title = re.sub(r'[<>:"/\\|?*]', '', title)
-    safe_title = safe_title.replace(" ", "_")
-    if len(safe_title) > max_length:
-        safe_title = safe_title[:max_length] + "..."
-    return safe_title
-
+# Import necessary types for OpenAI messages
+from openai.types.chat import ChatCompletionMessageParam
 
 class MentorEngine:
     def __init__(self):
-        conn = Connection()
-        self.llm = conn.get_llm()
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        self.chat_dir = os.path.abspath(os.path.join(base_dir, "../../../data/chats"))
-        os.makedirs(self.chat_dir, exist_ok=True)
+        try:
+            self.conn = Connection()
+            # FIX: Get both the client and the deployment name from Connection
+            self.llm_client = self.conn.get_llm() # This returns AsyncAzureOpenAI client
+            self.llm_deployment_name = self.conn.get_llm_deployment_name() # This returns your deployment string
 
-    def save_chat(self, user_id: str, convo_title: str, messages: list):
-        safe_title = safe_filename(convo_title)
-        filename = os.path.join(self.chat_dir, f"{user_id}_{safe_title}.json")
-        chat_data = {
-            "user_id": user_id,
-            "title": convo_title,
-            "messages": messages,
-            "last_updated": datetime.utcnow().isoformat()
-        }
-        with open(filename, "w", encoding="utf-8") as f:
-            json.dump(chat_data, f, indent=2)
+            if not self.llm_client:
+                raise ValueError("LLM client not initialized by Connection. Please check Connection class.")
+        except Exception as e:
+            print(f"Error initializing LLM in MentorEngine: {e}")
+            traceback.print_exc()
+            raise
 
-    def load_chat(self, user_id: str, convo_title: str):
-        safe_title = safe_filename(convo_title)
-        filename = os.path.join(self.chat_dir, f"{user_id}_{safe_title}.json")
-        if not os.path.exists(filename):
-            return None
-        with open(filename, "r", encoding="utf-8") as f:
-            return json.load(f)
+    def safe_filename(self, title: str) -> str:
+        safe_title = re.sub(r'[^\w\s-]', '', title).strip()
+        safe_title = re.sub(r'[-\s]+', '-', safe_title)
+        return safe_title[:50]
 
-    def list_chats(self, user_id: str):
-        if not os.path.exists(self.chat_dir):
-            return []
-        files = os.listdir(self.chat_dir)
-        user_chats = [f for f in files if f.startswith(user_id + "_") and f.endswith(".json")]
-        return [f[len(user_id)+1:-5].replace("_", " ") for f in user_chats]
+    async def _get_llm_completion(self, messages: List[ChatCompletionMessageParam], temperature: float = 0.7, max_tokens: int = 500) -> str:
+        """
+        Helper method to interact with the LLM via the AsyncAzureOpenAI client.
+        """
+        try:
+            response = await self.llm_client.chat.completions.create(
+                model=self.llm_deployment_name,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            print(f"❌ Error during LLM completion request: {e}")
+            traceback.print_exc()
+            raise # Re-raise to allow calling functions to handle
 
-    def generate_intro_and_topics(self, learning_desc: str) -> str:
-        prompt = f"""
-                    You are a friendly, interactive AI mentor.
-
-                    A learner said: "{learning_desc}"
-
-                    1. Greet warmly.
-                    2. Acknowledge the learning goal.
-                    3. List 4-6 key subtopics you will teach as bullet points.
-                    4. Invite them to start the session with a warm question.
-
-                    Use clear, encouraging language.
-"""
-        
-        
-        gemini_api_key = "AIzaSyA5CJMIV4zAxbNDn6jiL4G3Rgl_v5yCBYo"
-
-        llm = LLM(model="gemini/gemini-2.5-flash", provider="google")
-        response = llm.call(prompt)
-        return response
-        
-
-    def generate_role_goal_backstory(self, topic: str):
-        role = "Mentor AI Agent"
-        goal = f"Help user learn about {topic}."
-        backstory = f"You are a mentor AI helping a learner understand {topic} deeply with explanations, questions, and guidance."
-        return role, goal, backstory
-
-    def chat_with_agent(self, user_id: str, convo_title: str, user_message: str):
-        chat_data = self.load_chat(user_id, convo_title)
-        if chat_data is None:
-            raise ValueError(f"No chat found for user '{user_id}' with title '{convo_title}'")
-
-        messages = chat_data.get("messages", [])
-        messages.append({"role": "user", "content": user_message})
-
-        base_title = convo_title.split(" - ")[0]
-        topic = base_title.replace("Learning ", "")
-
-        role, goal, backstory = self.generate_role_goal_backstory(topic)
-        mentor_agent = create_mentor_agent(self.llm, role, goal, backstory)
-
-        conversation_text = ""
-        for m in messages:
-            conversation_text += f"{m['role'].capitalize()}: {m['content']}\n"
-
-        task_prompt = f"Continue this conversation:\n{conversation_text}Mentor:"
-
-        task = Task(
-            description="Generate mentor reply",
-            agent=mentor_agent,
-            function_args={"tool_input": task_prompt},
-            expected_output="Text reply continuing the conversation",
-            output_key="mentor_reply"
+    async def generate_intro_and_topics(self, context_description: str, extra_instructions: Optional[str] = None) -> Tuple[str, List[str]]:
+        """
+        Generates an introductory message and a list of topics using the LLM.
+        FIX: Made this function async.
+        """
+        instructions_clause = f"{extra_instructions}\n\n" if extra_instructions else ""
+        default_behavior = (
+            "You are a mentor who is very interactive. "
+            "Ask questions, quiz the user, summarize lessons, and check understanding. "
         )
 
-        crew = Crew(agents=[mentor_agent], tasks=[task], verbose=True)
-        result = crew.kickoff()
-        agent_reply = result.raw.strip()
+        prompt_content = f"""
+As an interactive AI mentor, provide the following components for a learner's introduction:
+1.  A warm, brief, and catchy opening greeting.
+2.  A list of key topic titles for the learning journey. These should be concise and relevant.
+3.  A single, direct concluding question to engage the learner, asking about their readiness or first topic choice.
 
-        messages.append({"role": "mentor", "content": agent_reply})
-        self.save_chat(user_id, convo_title, messages)
+Do NOT provide any markdown formatting (like bolding, bullet points, or extra descriptions) for the topic titles within the JSON output, other than the list structure itself.
 
-        return agent_reply, messages
+{instructions_clause}
+{default_behavior}
 
-    def launch_mentor_session(
+Learner context:
+{context_description}
+
+Your response MUST be in the following JSON format:
+{{
+  "greeting": "Your friendly and encouraging short introductory message.",
+  "topics": [
+    "Topic 1 Title",
+    "Topic 2 Title",
+    "..."
+  ],
+  "concluding_question": "Your single, direct concluding question."
+}}
+Ensure 'topics' contains only the exact topic titles as strings.
+"""
+        messages: List[ChatCompletionMessageParam] = [
+            {"role": "user", "content": prompt_content}
+        ]
+
+        llm_raw_response = "" # Initialize for debugging in case of error
+        try:
+            # FIX: Call the async helper method to get LLM response
+            llm_raw_response = await self._get_llm_completion(messages, temperature=0.5, max_tokens=700)
+
+            # Clean potential markdown code block wrappers
+            cleaned_response_text = llm_raw_response.strip()
+            if cleaned_response_text.startswith("```json"):
+                cleaned_response_text = cleaned_response_text[len("```json"):].strip()
+                if cleaned_response_text.endswith("```"):
+                    cleaned_response_text = cleaned_response_text[:-len("```")].strip()
+
+            parsed_response = json.loads(cleaned_response_text)
+
+            greeting = parsed_response.get("greeting", "Hello there!")
+            topics_for_internal_use = parsed_response.get("topics", ["Introduction", "Key Concepts", "Next Steps"])
+            concluding_question = parsed_response.get("concluding_question", "Ready to begin?")
+
+            if not isinstance(topics_for_internal_use, list) or not all(isinstance(t, str) for t in topics_for_internal_use):
+                print("Warning: LLM returned topics in an unexpected format. Using fallback topics.")
+                topics_for_internal_use = ["Introduction", "Key Concepts", "Next Steps"]
+
+            # Construct the final full message that will be sent to the frontend
+            topics_formatted_list = "\n- " + "\n- ".join(topics_for_internal_use)
+            intro_and_topics_message = (
+                f"{greeting}\n\n"
+                f"Here are the topics we'll explore:\n{topics_formatted_list}\n\n"
+                f"{concluding_question}"
+            )
+
+            return intro_and_topics_message, topics_for_internal_use
+
+        except json.JSONDecodeError as e:
+            print(f"❌ JSON parsing error in generate_intro_and_topics: {e}. Raw response: {llm_raw_response}")
+            traceback.print_exc()
+            fallback_intro_message = (
+                "Hello! I'm your AI mentor, ready to guide you on your journey.\n\n"
+                "Here are some topics we can explore:\n"
+                "- Introduction\n"
+                "- Core Concepts\n"
+                "- Advanced Topics\n\n"
+                "Ready to begin?"
+            )
+            fallback_topics_list = ["Introduction", "Core Concepts", "Advanced Topics"]
+            return fallback_intro_message, fallback_topics_list
+        except Exception as e:
+            print(f"❌ Error generating intro and topics: {e}")
+            traceback.print_exc()
+            fallback_intro_message = (
+                "Hello! I'm your AI mentor, but I'm having a little trouble at the moment. Please try again.\n\n"
+                "Here are some generic topics:\n"
+                "- Introduction\n"
+                "- Core Concepts\n"
+                "- Advanced Topics\n\n"
+                "Ready to begin?"
+            )
+            fallback_topics_list = ["Introduction", "Core Concepts", "Advanced Topics"]
+            return fallback_intro_message, fallback_topics_list
+
+    # FIX: Added missing parameters and made the function async
+    async def chat(
         self,
+        chat_history: List[Dict[str, Any]], # Use Dict[str, Any] as ChatMessage objects are converted to dicts
         user_id: str,
-        learning_description: str,
-        user_message: Optional[str] = None,
-        custom_title: Optional[str] = None
-    ):
-        title = custom_title if custom_title else f"Learning {learning_description.strip()}"
-        chat_data = self.load_chat(user_id, title)
+        learning_goal: Optional[str],
+        skills: List[str],
+        difficulty: str,
+        role: str,
+        mentor_topics: Optional[List[str]] = None,
+        current_topic: Optional[str] = None,
+        completed_topics: Optional[List[str]] = None,
+    ) -> str:
+        """
+        Generate mentor reply, enforcing sequential topic learning.
+        - chat_history: full conversation so far, latest user message last
+        - learning_goal: User's overall learning objective
+        - skills: User's existing skills/interests
+        - difficulty: User's preferred learning difficulty
+        - role: User's role (e.g., "student")
+        - mentor_topics: full list of mentor topics in order
+        - current_topic: the topic currently being taught
+        - completed_topics: topics already completed
+        """
 
-        if chat_data is None:
-            messages = []
-            intro = self.generate_intro_and_topics(learning_description)
-            messages.append({"role": "mentor", "content": intro})
-            if user_message:
-                messages.append({"role": "user", "content": user_message})
-                agent_reply, messages = self.chat_with_agent(user_id, title, user_message)
-            self.save_chat(user_id, title, messages)
-            return title, messages, intro
-        else:
-            messages = chat_data.get("messages", [])
-            if user_message:
-                agent_reply, messages = self.chat_with_agent(user_id, title, user_message)
-                return title, messages, agent_reply
-            else:
-                return title, messages, messages[-1]["content"] if messages else ""
+        if not chat_history:
+            return "Hello! How can I assist you today?"
+
+        user_latest_message = chat_history[-1]["content"]
+
+        # Basic validation and defaulting
+        if mentor_topics is None:
+            mentor_topics = []
+        if completed_topics is None:
+            completed_topics = []
+
+        # Default to first topic if current_topic not set and topics exist
+        if current_topic is None and mentor_topics:
+            current_topic = mentor_topics[0]
+
+        # Logic to check if user is trying to jump ahead or revisit past topics
+        def user_mentions_topic(topic: str) -> bool:
+            return topic.lower() in user_latest_message.lower()
+
+        if mentor_topics and current_topic:
+            try:
+                current_index = mentor_topics.index(current_topic)
+                # Check for user mention of any future topic (after current)
+                for future_index in range(current_index + 1, len(mentor_topics)):
+                    future_topic = mentor_topics[future_index]
+                    if user_mentions_topic(future_topic):
+                        return (
+                            f"I see you're curious about **{future_topic}**, but let's make sure we've covered "
+                            f"**{current_topic}** first. Would you like me to summarize the current topic or answer questions on it before moving on? "
+                            f"Or do you want to skip ahead anyway?"
+                        )
+
+                # If user mentions a previous topic that is completed, encourage reviewing or moving forward
+                for past_index in range(0, current_index):
+                    past_topic = mentor_topics[past_index]
+                    if user_mentions_topic(past_topic) and past_topic not in completed_topics:
+                        # You might adjust this logic: if it's not completed, maybe it was skipped.
+                        # For now, this implies you're reminding them to complete it.
+                        return (
+                            f"It looks like you want to revisit **{past_topic}**, which we were working on earlier. "
+                            f"Would you like me to review it with you before we continue with **{current_topic}**?"
+                        )
+            except ValueError: # current_topic not found in mentor_topics
+                print(f"Warning: current_topic '{current_topic}' not found in mentor_topics.")
+                pass # Continue to general chat if topic not found in ordered list
+
+
+        # Build system message for the LLM
+        system_context = self._build_system_context(
+            learning_goal, skills, difficulty, role, mentor_topics, current_topic, completed_topics
+        )
+
+        # Convert chat_history into the format required by OpenAI API
+        # Ensure 'timestamp' and 'audio_url' are not passed to the LLM directly as they are custom
+        messages_for_api: List[ChatCompletionMessageParam] = [
+            {"role": msg["role"], "content": msg["content"]}
+            for msg in chat_history if "role" in msg and "content" in msg
+        ]
+
+        if system_context:
+            messages_for_api.insert(0, {"role": "system", "content": system_context})
+
+        try:
+            # FIX: Call the async helper method to get LLM response
+            mentor_reply = await self._get_llm_completion(messages_for_api)
+            return mentor_reply.strip()
+        except Exception as e:
+            print(f"❌ Error generating mentor reply in chat method: {e}")
+            traceback.print_exc()
+            return "Sorry, I encountered a problem generating a response. Could you please try rephrasing?"
+
+    def _build_system_context(self, learning_goal, skills, difficulty, role, mentor_topics, current_topic, completed_topics) -> str:
+        """
+        Builds the system context string for the LLM based on session parameters.
+        """
+        context_parts = [
+            "You are an AI mentor, highly interactive, supportive, and knowledgeable.",
+            "Your goal is to guide the user through their learning journey by asking questions, explaining concepts, summarizing lessons, and checking understanding.",
+            "Always maintain a positive and encouraging tone.",
+            f"The user's role is: {role}.",
+            f"Their preferred learning difficulty is: {difficulty}.",
+            f"Their general skills/interests are: {', '.join(skills)}."
+        ]
+        if learning_goal:
+            context_parts.append(f"Their specific learning goal for this session is: {learning_goal}.")
+        if mentor_topics:
+            context_parts.append(f"The overall topics planned for this session are: {', '.join(mentor_topics)}.")
+        if current_topic:
+            context_parts.append(f"We are currently focusing on the topic: '{current_topic}'.")
+        if completed_topics:
+            context_parts.append(f"Topics already covered: {', '.join(completed_topics)}.")
+
+        return "\n".join(context_parts)

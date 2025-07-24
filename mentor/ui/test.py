@@ -1,24 +1,23 @@
-import os
-import sys
-import sqlite3
-import sys
-import os
+import asyncio
+from mentor.core.engine.utils import text_to_speech
 
-# Set root path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
-from shared.storage.handle_user import validate_login, get_all_users, get_user
+async def test_tts():
+    text = "Hello, this is a test of the text-to-speech function."
+    print(f"Testing TTS for: '{text}'")
+    try:
+        audio_bytes = await text_to_speech(text)
+        if audio_bytes:
+            print(f"Successfully generated {len(audio_bytes)} bytes of audio.")
+            # Optionally save to file to verify
+            with open("test_audio.mp3", "wb") as f:
+                f.write(audio_bytes)
+            print("Audio saved to test_audio.mp3")
+        else:
+            print("TTS function returned no audio data.")
+    except Exception as e:
+        print(f"Error during TTS test: {e}")
+        import traceback
+        traceback.print_exc()
 
-print("📋 All Users in DB:")
-users = get_all_users()
-for user in users:
-    print(f"👤 {user}")
-
-print("\n🔐 Testing Login:")
-test_user_id = "vijaya01"
-test_password = "vijaya@123"
-
-if validate_login(test_user_id, test_password):
-    user = get_user(test_user_id)
-    print(f"✅ Login successful! Welcome {user[1]} ({user[0]})")
-else:
-    print(f"❌ Invalid credentials for: {test_user_id}")
+if __name__ == "__main__":
+    asyncio.run(test_tts())

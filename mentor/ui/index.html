@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Mentor Me</title>
+    <style>
+        /* Your existing CSS styles go here */
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', sans-serif;
+            background-color: #f4f7fc;
+            color: #333;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background-color: #004aad;
+            color: white;
+            padding: 1rem;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 1rem;
+            background-color: #004aad;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 280px;
+            min-width: 200px;
+            background-color: #e8f0fe;
+            padding: 1rem;
+            border-right: 1px solid #ccc;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+
+        .sidebar h3, .sidebar h4 {
+            margin-top: 0;
+            margin-bottom: 0.5rem;
+        }
+
+        #logged-in-user {
+            font-weight: bold;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+            color: #004aad;
+        }
+
+        #past-sessions {
+            list-style: none;
+            padding-left: 0;
+            margin-top: 1rem;
+            margin-bottom: 0;
+        }
+
+        #past-sessions li {
+            background: white;
+            margin-bottom: 0.75rem;
+            padding: 0.6rem 0.8rem;
+            border-radius: 6px;
+            cursor: pointer;
+            box-shadow: 0 0 5px rgba(0,0,0,0.05);
+            transition: background-color 0.2s ease;
+        }
+
+        #past-sessions li:hover {
+            background-color: #d2e3fc;
+        }
+
+        .session-title {
+            font-weight: 600;
+            color: #004aad;
+            margin-bottom: 0.2rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .session-meta {
+            font-size: 0.75rem;
+            color: #666;
+            margin-bottom: 0.3rem;
+        }
+
+        .session-snippet {
+            font-size: 0.85rem;
+            color: #333;
+            max-height: 2.8em;
+            line-height: 1.4em;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .main-content-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .messages {
+            flex: 1;
+            padding: 1rem;
+            overflow-y: auto;
+            background-color: white;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .message {
+            margin: 0.5rem 0;
+            padding: 0.75rem;
+            border-radius: 8px;
+            max-width: 70%;
+            position: relative;
+            word-wrap: break-word;
+            white-space: pre-wrap; /* Ensures newlines and spaces are respected */
+        }
+
+        .message.user {
+            background-color: #d2e3fc;
+            align-self: flex-end;
+        }
+
+        .message.mentor {
+            background-color: #ffffff;
+            align-self: flex-start;
+            border-left: 5px solid #004aad;
+            white-space: pre-wrap; /* Ensures newlines and spaces are respected */
+        }
+
+        .mentor-icon::before {
+            content: "👨‍🏫 ";
+        }
+
+        .message time {
+            display: block;
+            font-size: 0.7rem;
+            color: #777;
+            margin-top: 0.3rem;
+            text-align: right;
+            user-select: none;
+        }
+
+        /* Styles for the audio button */
+        .message .audio-control {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.2em;
+            margin-left: 0.5em;
+            vertical-align: middle;
+            color: #004aad; /* Match your primary color */
+            transition: color 0.2s ease;
+        }
+
+        .message .audio-control:hover:not(:disabled) {
+            color: #003580; /* Darker shade on hover */
+        }
+
+        .message .audio-control:disabled {
+            color: #b0c4de; /* Lighter color when disabled */
+            cursor: not-allowed;
+        }
+
+        .input-box {
+            display: flex;
+            padding: 1rem;
+            background-color: #f1f1f1;
+            border-top: 1px solid #ccc;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .input-box textarea {
+            flex: 1;
+            padding: 0.75rem;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 1rem;
+            resize: vertical;
+            min-height: 40px;
+            max-height: 120px;
+            overflow-y: auto;
+        }
+
+        .input-box button {
+            background-color: #004aad;
+            color: white;
+            padding: 0.75rem 1rem;
+            border: none;
+            margin-left: 0.5rem;
+            border-radius: 5px;
+            cursor: pointer;
+            min-width: 80px;
+            font-weight: 600;
+            transition: background-color 0.3s ease;
+        }
+
+        .input-box button:disabled {
+            background-color: #6699cc;
+            cursor: not-allowed;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        select, input[type="text"], input[type="password"], textarea {
+            width: 100%;
+            padding: 0.5rem;
+            font-size: 1rem;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        button {
+            padding: 0.6rem 1rem;
+            background-color: #004aad;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+            font-weight: 600;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover:not(:disabled) {
+            background-color: #003580;
+        }
+
+        .login {
+            max-width: 400px;
+            margin: 2rem auto;
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            flex-shrink: 0;
+        }
+
+        .setup {
+            max-width: 600px;
+            margin: 2rem auto;
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            width: 90%;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            overflow-y: auto;
+            padding-bottom: 2rem;
+        }
+        .setup .form-group {
+            width: 100%;
+            max-width: 400px;
+            text-align: left;
+        }
+        .setup button {
+            margin-top: 1rem;
+        }
+
+        /* Show password toggle */
+        .password-wrapper {
+            position: relative;
+        }
+
+        .password-wrapper input {
+            padding-right: 2.5rem;
+        }
+
+        .toggle-password {
+            position: absolute;
+            top: 50%;
+            right: 0.7rem;
+            transform: translateY(-50%);
+            cursor: pointer;
+            font-size: 1.1rem;
+            color: #777;
+            user-select: none;
+        }
+
+        /* Typing indicator */
+        #typing-indicator {
+            font-style: italic;
+            color: #666;
+            margin: 0 1rem 0.5rem 1rem;
+            height: 1.5rem;
+            user-select: none;
+            text-align: center;
+        }
+
+        /* NEW Skill Selection Styles */
+        .skill-tag {
+            background-color: #e8f0fe;
+            color: #004aad;
+            padding: 8px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            border: 1px solid #c2d9ff;
+            transition: all 0.2s ease;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+
+        .skill-tag:hover {
+            background-color: #d2e3fc;
+            border-color: #a8c8ff;
+        }
+
+        .skill-tag.selected {
+            background-color: #004aad;
+            color: white;
+            border-color: #003580;
+        }
+
+        .selected-skill-item {
+            background-color: #0056b3;
+            color: white;
+            padding: 5px 8px;
+            border-radius: 3px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+
+        .selected-skill-item .remove-skill {
+            background: none;
+            border: none;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            padding: 0 3px;
+            line-height: 1;
+            font-size: 1em;
+            margin-left: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 1em;
+        }
+
+        #custom-skill-input-container button {
+            padding: 0.5rem 0.8rem;
+            font-size: 0.9rem;
+            white-space: nowrap;
+        }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Mentor Me</h1>
+    </header>
+
+    <div class="login" id="login-section">
+        <h2>Login</h2>
+        <div class="form-group">
+            <label for="userId">User ID:</label>
+            <input type="text" id="userId" />
+        </div>
+        <div class="form-group password-wrapper">
+            <label for="password">Password:</label>
+            <input type="password" id="password" />
+            <span id="toggle-password" class="toggle-password" title="Show/Hide password">👁️</span>
+        </div>
+        <button id="login-btn" onclick="login()">Login</button>
+        <p id="login-error" style="color: red;"></p>
+    </div>
+
+    <div class="container hidden" id="main-app-container">
+        <div class="sidebar">
+            <h3>Logged in as:</h3>
+            <div id="logged-in-user"></div>
+            <button onclick="showSetupSection()" style="margin-bottom: 1rem; width: 100%;">New Session</button>
+            <h4>Previous Sessions</h4>
+            <ul id="past-sessions" title="Click to load session"></ul>
+        </div>
+
+        <div class="main-content-area" id="dynamic-content-area">
+
+            <div class="setup" id="setup-section">
+                <h2>Set Learning Preferences</h2>
+                <div class="form-group">
+                    <label>Skills:</label>
+                    <div id="skills-selection-container" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;">
+                        <span class="skill-tag predefined" data-skill="Python">Python</span>
+                        <span class="skill-tag predefined" data-skill="Machine Learning">Machine Learning</span>
+                        <span class="skill-tag predefined" data-skill="Data Science">Data Science</span>
+                        <span class="skill-tag predefined" data-skill="AI">AI</span>
+                        <span class="skill-tag predefined" data-skill="Others" id="others-skill-tag">Others</span>
+                    </div>
+                    <div id="custom-skill-input-container" class="hidden" style="display: flex; gap: 5px;">
+                        <input type="text" id="custom-skill-input" placeholder="Type custom skill" style="flex: 1;"/>
+                        <button type="button" onclick="addCustomSkill()">Add</button>
+                    </div>
+                    <div id="selected-skills-display" style="border: 1px solid #ccc; padding: 5px; min-height: 40px; border-radius: 5px; background-color: #fff; display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin-top: 10px;">
+                        <span id="no-skills-selected" style="color: #999;">Click skills above to add</span>
+                    </div>
+                    <input type="hidden" id="selected-skills-hidden-input" name="selected_skills" value="" />
+                </div>
+                <div class="form-group">
+                    <label for="difficulty">Difficulty:</label>
+                    <select id="difficulty">
+                        <option value="Beginner">Beginner</option>
+                        <option value="Intermediate">Intermediate</option>
+                        <option value="Advanced">Advanced</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="role">Role:</label>
+                    <select id="role">
+                        <option value="Student">Student</option>
+                        <option value="Engineer">Engineer</option>
+                        <option value="Researcher">Researcher</option>
+                    </select>
+                </div>
+                <button onclick="startSession()">Start Session</button>
+            </div>
+
+            <div class="chat-area hidden" id="chat-messages-area">
+                <div class="messages" id="chat-messages"></div>
+                <div id="typing-indicator" class="hidden">Mentor is typing...</div>
+                <div class="input-box">
+                    <textarea id="user-input" placeholder="Ask your mentor..." rows="1"></textarea>
+                    <button id="send-btn" onclick="sendMessage()">Send</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="footer">
+        Powered by HCL 2025
+    </div>
+
+    <script>
+        let chatHistory = [];
+        let userId = "";
+        let typingTimeout;
+        const loginBtn = document.getElementById('login-btn');
+        const sendBtn = document.getElementById('send-btn');
+        const typingIndicator = document.getElementById('typing-indicator');
+        const mainAppContainer = document.getElementById('main-app-container');
+        const setupSection = document.getElementById('setup-section');
+        const chatMessagesArea = document.getElementById('chat-messages-area');
+        const chatMessagesDiv = document.getElementById('chat-messages'); // Get the messages container
+
+        // NEW Skill Selection Elements
+        const skillsSelectionContainer = document.getElementById('skills-selection-container');
+        const othersSkillTag = document.getElementById('others-skill-tag');
+        const customSkillInputContainer = document.getElementById('custom-skill-input-container');
+        const customSkillInput = document.getElementById('custom-skill-input');
+        const selectedSkillsDisplay = document.getElementById('selected-skills-display');
+        const noSkillsSelectedSpan = document.getElementById('no-skills-selected');
+        const selectedSkillsHiddenInput = document.getElementById('selected-skills-hidden-input');
+        let currentSelectedSkills = new Set(); // Use a Set to store unique skills
+
+        // Toggle password visibility
+        document.getElementById('toggle-password').addEventListener('click', () => {
+            const pwdInput = document.getElementById('password');
+            if (pwdInput.type === 'password') {
+                pwdInput.type = 'text';
+                document.getElementById('toggle-password').textContent = '🙈';
+            } else {
+                pwdInput.type = 'password';
+                document.getElementById('toggle-password').textContent = '👁️';
+            }
+        });
+
+        // Auto-resize textarea
+        document.getElementById('user-input').addEventListener('input', function() {
+            this.style.height = 'auto'; // Reset height
+            this.style.height = (this.scrollHeight) + 'px'; // Set to scroll height
+        });
+
+        // Enter to send, Shift+Enter for newline
+        document.getElementById('user-input').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        // --- Skill Selection Logic ---
+        skillsSelectionContainer.addEventListener('click', (event) => {
+            const target = event.target;
+            if (target.classList.contains('skill-tag') && target.dataset.skill) {
+                const skill = target.dataset.skill;
+
+                if (skill === "Others") {
+                    // Toggle "Others" input visibility
+                    if (customSkillInputContainer.classList.contains('hidden')) {
+                        customSkillInputContainer.classList.remove('hidden');
+                        target.classList.add('selected');
+                        // Add "Others" to the set if not already there, to persist its state
+                        if (!currentSelectedSkills.has("Others")) {
+                             currentSelectedSkills.add("Others");
+                             updateSelectedSkillsDisplay();
+                        }
+                        customSkillInput.focus();
+                    } else {
+                        customSkillInputContainer.classList.add('hidden');
+                        target.classList.remove('selected');
+                        // Remove "Others" from the set if it was there
+                        currentSelectedSkills.delete("Others");
+                        updateSelectedSkillsDisplay();
+                    }
+                } else {
+                    // Add/remove predefined skills
+                    if (currentSelectedSkills.has(skill)) {
+                        currentSelectedSkills.delete(skill);
+                        target.classList.remove('selected');
+                    } else {
+                        currentSelectedSkills.add(skill);
+                        target.classList.add('selected');
+                    }
+                    updateSelectedSkillsDisplay();
+                }
+            }
+        });
+
+        function addCustomSkill() {
+            const skill = customSkillInput.value.trim();
+            if (skill && !currentSelectedSkills.has(skill)) {
+                currentSelectedSkills.add(skill);
+                updateSelectedSkillsDisplay();
+                customSkillInput.value = ""; // Clear input after adding
+                customSkillInput.focus();
+            } else if (currentSelectedSkills.has(skill)) {
+                alert(`"${skill}" is already added.`);
+            }
+        }
+
+        function removeSkill(skillToRemove) {
+            currentSelectedSkills.delete(skillToRemove);
+            // If "Others" was the one removed, ensure the "Others" tag is deselected and input hidden
+            if (skillToRemove === "Others") {
+                othersSkillTag.classList.remove('selected');
+                customSkillInputContainer.classList.add('hidden');
+            }
+            // Also deselect predefined tags if they were removed
+            document.querySelectorAll('.skill-tag.predefined').forEach(tag => {
+                if (tag.dataset.skill === skillToRemove) {
+                    tag.classList.remove('selected');
+                }
+            });
+            updateSelectedSkillsDisplay();
+        }
+
+        function updateSelectedSkillsDisplay() {
+            selectedSkillsDisplay.innerHTML = ''; // Clear previous
+            if (currentSelectedSkills.size === 0) {
+                selectedSkillsDisplay.appendChild(noSkillsSelectedSpan);
+                noSkillsSelectedSpan.classList.remove('hidden');
+            } else {
+                noSkillsSelectedSpan.classList.add('hidden');
+                currentSelectedSkills.forEach(skill => {
+                    const skillItem = document.createElement('span');
+                    skillItem.className = 'selected-skill-item';
+                    skillItem.textContent = skill;
+
+                    const removeButton = document.createElement('button');
+                    removeButton.className = 'remove-skill';
+                    removeButton.textContent = 'x';
+                    removeButton.onclick = () => removeSkill(skill);
+
+                    skillItem.appendChild(removeButton);
+                    selectedSkillsDisplay.appendChild(skillItem);
+                });
+            }
+            // Update the hidden input for form submission
+            selectedSkillsHiddenInput.value = JSON.stringify(Array.from(currentSelectedSkills));
+        }
+
+        // Initialize display when page loads (or when setup section is shown)
+        document.addEventListener('DOMContentLoaded', updateSelectedSkillsDisplay);
+
+        // --- End Skill Selection Logic ---
+
+        async function login() {
+            userId = document.getElementById("userId").value.trim();
+            const password = document.getElementById("password").value;
+            const errorElem = document.getElementById("login-error");
+            errorElem.textContent = "";
+            if (!userId || !password) {
+                errorElem.textContent = "Please enter User ID and Password.";
+                return;
+            }
+
+            loginBtn.disabled = true;
+            loginBtn.textContent = "Logging in...";
+
+            try {
+                const res = await fetch("http://127.0.0.1:8085/login", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({user_id: userId, password})
+                });
+
+                if (res.ok) {
+                    document.getElementById("login-section").classList.add("hidden");
+                    mainAppContainer.classList.remove("hidden"); // Show the main app container with sidebar
+                    showSetupSection(); // Show the setup section within it (which will also clear chat and setup skills)
+                    document.getElementById("logged-in-user").textContent = userId;
+
+                    // Pre-fill previous preferences if any in localStorage
+                    const pref = localStorage.getItem(`prefs_${userId}`);
+                    if (pref) {
+                        try {
+                            const parsed = JSON.parse(pref);
+                            // Set skills in the new Set system
+                            currentSelectedSkills = new Set(parsed.skills || []);
+                            updateSelectedSkillsDisplay(); // Refresh the display for new skill system
+
+                            // Also ensure predefined skill tags reflect selected state
+                            document.querySelectorAll('.skill-tag.predefined').forEach(tag => {
+                                if (currentSelectedSkills.has(tag.dataset.skill)) {
+                                    tag.classList.add('selected');
+                                } else {
+                                    tag.classList.remove('selected');
+                                }
+                            });
+                            // Handle "Others" tag specifically if custom skills were loaded
+                            const hasNonPredefinedSkill = parsed.skills.some(s => !['Python', 'Machine Learning', 'Data Science', 'AI'].includes(s));
+
+                            if (currentSelectedSkills.has("Others") || hasNonPredefinedSkill) {
+                                othersSkillTag.classList.add('selected');
+                                customSkillInputContainer.classList.remove('hidden');
+                            } else {
+                                othersSkillTag.classList.remove('selected');
+                                customSkillInputContainer.classList.add('hidden');
+                            }
+
+
+                            if(parsed.difficulty) {
+                                document.getElementById("difficulty").value = parsed.difficulty;
+                            }
+                            if(parsed.role) {
+                                document.getElementById("role").value = parsed.role;
+                            }
+
+                        } catch { /* ignore parse errors */ }
+                    }
+
+                    await fetchChats(); // Ensure this is called AFTER login and UI is ready
+                } else {
+                    errorElem.textContent = "Login failed. Check credentials.";
+                }
+            } catch(e) {
+                errorElem.textContent = "Error connecting to server.";
+                console.error("Login error:", e);
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.textContent = "Login";
+            }
+        }
+
+        // New function to switch to setup section from sidebar
+        function showSetupSection() {
+            setupSection.classList.remove("hidden");
+            chatMessagesArea.classList.add("hidden");
+            chatHistory = []; // Clear chat history when starting a new session
+            renderMessages(); // Clear messages from display
+            // Clear and reset skills selection for a new session
+            currentSelectedSkills.clear();
+            updateSelectedSkillsDisplay();
+            document.querySelectorAll('.skill-tag.predefined').forEach(tag => tag.classList.remove('selected'));
+            customSkillInputContainer.classList.add('hidden'); // Hide custom skill input
+            customSkillInput.value = ""; // Clear custom skill input
+        }
+
+        async function fetchChats() {
+            try {
+                const res = await fetch(`http://127.0.0.1:8085/get_chats?user_id=${encodeURIComponent(userId)}`);
+                if (!res.ok) throw new Error("Failed to fetch chats. Status: " + res.status);
+                const data = await res.json();
+                const list = document.getElementById("past-sessions");
+                list.innerHTML = ""; // Clear existing list items
+
+                if (!data.chats || data.chats.length === 0) {
+                    const li = document.createElement("li");
+                    li.textContent = "No previous sessions";
+                    li.style.fontStyle = "italic";
+                    li.style.color = "#666";
+                    list.appendChild(li);
+                    return;
+                }
+
+                // Sort chats by last_modified date, newest first
+                // Access the timestamp at index 2
+                data.chats.sort((a, b) => {
+                    const dateA = new Date(a[2] || 0);
+                    const dateB = new Date(b[2] || 0);
+                    return dateB - dateA; // Descending order (newest first)
+                });
+
+
+                data.chats.forEach(chat => {
+                    // Assuming chat is an array [id, title_preview, timestamp]
+                    const chatId = chat[0]; // ID, not used in display but can be helpful
+                    const chatTitlePreview = chat[1]; // This is the combined title/preview string
+                    const chatTimestamp = chat[2];
+
+                    const li = document.createElement("li");
+                    li.title = chatTitlePreview || "No Title"; // Use the combined string for tooltip
+                    li.onclick = () => loadChat(chatTitlePreview); // Pass the title for loading
+
+                    const titleDiv = document.createElement("div");
+                    titleDiv.className = "session-title";
+                    titleDiv.textContent = chatTitlePreview || "Untitled Session"; // Fallback for display
+
+                    const metaDiv = document.createElement("div");
+                    metaDiv.className = "session-meta";
+                    const dt = chatTimestamp ? new Date(chatTimestamp) : null;
+                    metaDiv.textContent = dt ? dt.toLocaleString() : "No Date";
+
+                    const snippetDiv = document.createElement("div");
+                    snippetDiv.className = "session-snippet";
+                    snippetDiv.textContent = chatTitlePreview || "No preview available."; // Use the same string for preview
+
+                    li.appendChild(titleDiv);
+                    li.appendChild(metaDiv);
+                    li.appendChild(snippetDiv);
+
+                    list.appendChild(li);
+                });
+            } catch (e) {
+                console.error("Error fetching chats:", e);
+                const list = document.getElementById("past-sessions");
+                list.innerHTML = '<li style="color: red; font-style: italic;">Error loading sessions. Please check server.</li>';
+            }
+        }
+
+        async function loadChat(title) {
+            try {
+                // Ensure the title parameter is correctly encoded
+                const res = await fetch(`http://127.0.0.1:8085/get_chat_messages?user_id=${encodeURIComponent(userId)}&title=${encodeURIComponent(title)}`);
+                if (!res.ok) throw new Error("Failed to load chat messages. Status: " + res.status);
+                const data = await res.json();
+                chatHistory = data.messages || [];
+                renderMessages();
+
+                setupSection.classList.add("hidden");
+                chatMessagesArea.classList.remove("hidden");
+            } catch (e) {
+                console.error("Error loading chat:", e);
+                alert("Failed to load chat: " + title + ". See console for details.");
+            }
+        }
+
+        async function startSession() {
+            const skills = Array.from(currentSelectedSkills); // Get skills from the Set
+            const difficulty = document.getElementById("difficulty").value;
+            const role = document.getElementById("role").value;
+
+            if (skills.length === 0) {
+                alert("Please select at least one skill.");
+                return;
+            }
+
+            try {
+                sendBtn.disabled = true;
+                sendBtn.textContent = "Starting...";
+                const res = await fetch("http://127.0.0.1:8085/start_session", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({ user_id: userId, skills, difficulty, role })
+                });
+                if (!res.ok) throw new Error("Failed to start session. Status: " + res.status);
+                const data = await res.json();
+
+                // Save preferences to localStorage for next time
+                localStorage.setItem(`prefs_${userId}`, JSON.stringify({ skills, difficulty, role }));
+
+                setupSection.classList.add("hidden");
+                chatMessagesArea.classList.remove("hidden");
+
+                // Use data.intro_and_topics directly as it's now formatted
+                chatHistory.push({ role: "assistant", content: data.intro_and_topics, timestamp: Date.now() });
+                renderMessages();
+                // After starting a session, refetch chats to include the new one
+                await fetchChats();
+            } catch (e) {
+                alert("Error starting session: " + e.message);
+                console.error("Error starting session:", e);
+            } finally {
+                sendBtn.disabled = false;
+                sendBtn.textContent = "Send";
+            }
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById("user-input");
+            const message = input.value.trim();
+            if (!message) return;
+
+            // Add user message to history and render
+            chatHistory.push({ role: "user", content: message, timestamp: Date.now() });
+            renderMessages();
+            input.value = ""; // Clear input
+            input.style.height = 'auto'; // Reset textarea height
+
+            showTypingIndicator(); // Show typing indicator before sending message
+
+            try {
+                const res = await fetch("http://127.0.0.1:8085/chat", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({ user_id: userId, chat_history: chatHistory })
+                });
+
+                if (!res.ok) {
+                    const errorText = await res.text(); // Get more details from the response
+                    throw new Error(`Chat failed with status ${res.status}: ${errorText}`);
+                }
+                const data = await res.json();
+                chatHistory.push({ role: "assistant", content: data.reply, timestamp: Date.now() });
+                renderMessages();
+                await saveCurrentChat(); // Save the chat after each message exchange
+            } catch (e) {
+                console.error("Error sending message:", e);
+                chatHistory.push({ role: "assistant", content: "Error: Could not get a response from the mentor. Please try again. Details: " + e.message, timestamp: Date.now() });
+                renderMessages();
+            } finally {
+                hideTypingIndicator(); // Hide typing indicator after response
+            }
+        }
+
+        function renderMessages() {
+            chatMessagesDiv.innerHTML = "";
+            chatHistory.forEach(msg => {
+                const msgDiv = document.createElement("div");
+                msgDiv.className = `message ${msg.role}`;
+
+                if (msg.role === "assistant") {
+                    // Add mentor icon
+                    const iconSpan = document.createElement("span");
+                    iconSpan.className = "mentor-icon";
+                    msgDiv.appendChild(iconSpan);
+
+                    // Add text content
+                    const textSpan = document.createElement("span");
+                    textSpan.textContent = msg.content;
+                    msgDiv.appendChild(textSpan);
+
+                    // Add the audio button for mentor messages
+                    const audioButton = document.createElement("button");
+                    audioButton.className = "audio-control";
+                    audioButton.textContent = "🔊"; // Speaker emoji
+                    audioButton.title = "Listen to message";
+                    audioButton.onclick = () => playAudio(msg.content, audioButton); // Pass button for disable/enable
+                    msgDiv.appendChild(audioButton);
+                } else {
+                    // For user messages, just add text content
+                    msgDiv.textContent = msg.content;
+                }
+
+                const timeSpan = document.createElement("time");
+                const date = new Date(msg.timestamp); // Assuming timestamp is epoch milliseconds
+                timeSpan.textContent = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                msgDiv.appendChild(timeSpan);
+
+                chatMessagesDiv.appendChild(msgDiv);
+            });
+            chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight; // Auto-scroll to bottom
+        }
+
+        // --- NEW: Audio Playback Function ---
+        let currentAudio = null; // To keep track of the currently playing audio
+
+        async function playAudio(text, buttonElement) {
+            if (!text) return;
+
+            // Disable the button to prevent multiple clicks
+            buttonElement.disabled = true;
+            buttonElement.textContent = "Loading..."; // Indicate loading state
+
+            // Stop any currently playing audio
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.src = ''; // Clear source
+                currentAudio = null;
+            }
+
+            try {
+                // Encode the text to be safely passed as a URL query parameter
+                const encodedText = encodeURIComponent(text);
+                const audioUrl = `http://127.0.0.1:8085/text_to_speech_direct?text=${encodedText}`;
+
+                // Create a new Audio object
+                currentAudio = new Audio(audioUrl);
+
+                // Add event listeners for when audio starts and ends
+                currentAudio.onplay = () => {
+                    buttonElement.textContent = "⏸️"; // Change to pause icon
+                    buttonElement.title = "Pause audio";
+                };
+
+                currentAudio.onended = () => {
+                    buttonElement.disabled = false; // Re-enable button
+                    buttonElement.textContent = "🔊"; // Change back to play icon
+                    buttonElement.title = "Listen to message";
+                    currentAudio = null; // Clear reference
+                };
+
+                currentAudio.onpause = () => {
+                    buttonElement.disabled = false; // Re-enable button
+                    buttonElement.textContent = "🔊"; // Change back to play icon
+                    buttonElement.title = "Listen to message";
+                    // Do not clear currentAudio here, allow it to be resumed
+                };
+
+                currentAudio.onerror = (e) => {
+                    console.error("Audio playback error:", e);
+                    alert("Failed to play audio. See console for details.");
+                    buttonElement.disabled = false;
+                    buttonElement.textContent = "🔊"; // Revert icon
+                    buttonElement.title = "Listen to message (Error)";
+                    currentAudio = null;
+                };
+
+                // Attempt to play the audio
+                await currentAudio.play();
+
+            } catch (e) {
+                console.error("Error playing audio:", e);
+                alert("Could not play audio. Ensure the backend is running and reachable.");
+                buttonElement.disabled = false;
+                buttonElement.textContent = "🔊";
+                buttonElement.title = "Listen to message (Failed)";
+                currentAudio = null;
+            }
+        }
+        // --- END Audio Playback Function ---
+
+
+        function showTypingIndicator() {
+            typingIndicator.classList.remove('hidden');
+            chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight; // Scroll to show indicator
+        }
+
+        function hideTypingIndicator() {
+            typingIndicator.classList.add('hidden');
+        }
+
+        async function saveCurrentChat() {
+            // Check if chatHistory is not empty and userId exists
+            if (chatHistory.length === 0 || !userId) {
+                console.warn("No chat history or user ID to save.");
+                return;
+            }
+
+            // Determine a session title. For new sessions, it's set by startSession.
+            // For ongoing chats, we might need a default or derive it.
+            // For simplicity, we'll try to use the most recent mentor message's start as a title hint
+            // or just a generic "Chat Session [timestamp]".
+            let currentChatTitle = "Chat Session " + new Date().toLocaleString();
+            if (chatHistory[0] && chatHistory[0].role === "assistant" && chatHistory[0].content) {
+                // Take the first line of the first mentor message as a potential title
+                currentChatTitle = chatHistory[0].content.split('\n')[0].substring(0, 50); // First 50 chars
+                if (currentChatTitle.length === 50) currentChatTitle += "...";
+            }
+            // You might want to get the actual title from `startSession` and store it in a global variable
+            // For now, this is a reasonable fallback.
+
+            try {
+                const res = await fetch("http://127.0.0.1:8085/save-chat", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({
+                        user_id: userId,
+                        title: currentChatTitle, // Using a simple title for now
+                        messages_json: JSON.stringify(chatHistory)
+                    })
+                });
+
+                if (!res.ok) throw new Error("Failed to save chat. Status: " + res.status);
+                // console.log("Chat saved successfully.");
+                await fetchChats(); // Refresh sidebar to show updated session (e.g., if title changed)
+            } catch (e) {
+                console.error("Error saving chat:", e);
+            }
+        }
+    </script>
+</body>
+</html>
