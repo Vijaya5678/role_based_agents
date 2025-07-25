@@ -1,0 +1,19 @@
+{
+  "levels": {
+    "beginner": {
+      "agenda": ["NLP", "Deep Learning"],
+      "assess_weightage": {
+        "NLP": 0.3,
+        "CNN": 0.1
+      }
+    },
+    "intermediate": {
+      "agenda": ["Prompt Engineering", "RAG", "LLM Fine-Tuning"],
+      "assess_weightage": {
+        "Prompt Engineering": 0.4,
+        "RAG": 0.3,
+        "LLM Fine-Tuning": 0.3
+      }
+    }
+  }
+}

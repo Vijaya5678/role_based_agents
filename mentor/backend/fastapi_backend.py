@@ -458,6 +458,25 @@ async def text_to_speech_post_endpoint(req: TTSRequest):
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Text-to-speech failed: {str(e)}")
 
+@app.get("/user_progress")
+async def get_user_progress(user_id: str, skill: str):
+    from shared.storage.handle_learning_progress import get_learned_topics
+    learned = get_learned_topics(user_id, skill)
+    return {"learned_topics": learned}
+
+@app.get("/load_config")
+async def load_config(skill: str):
+    """
+    Loads configuration for a selected skill (like genai or java).
+    """
+    try:
+        config_path = os.path.join(os.path.dirname(__file__), '..', '..', 'configs', f"{skill.lower()}.json")
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+        return config
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"No config found for skill '{skill}'")
+
 @app.get("/text_to_speech_direct")
 async def text_to_speech_get_endpoint(text: str = Query(..., description="Text to convert to speech")):
     """

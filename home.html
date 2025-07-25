@@ -1,50 +1,230 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Integrated AI Assistant</title>
-    <!-- Tailwind CSS CDN for styling -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6; /* Light gray background */
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Learning Cohort Platform</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2em; background: #f5f5f5; }
+    .hidden { display: none; }
+    .container { max-width: 800px; margin: auto; padding: 2em; background: white; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    h2 { color: #333; }
+    button { margin: 0.5em 0.5em 0.5em 0; padding: 0.5em 1em; border: none; background: #007BFF; color: white; border-radius: 4px; cursor: pointer; }
+    button:hover { background: #0056b3; }
+    select, input { padding: 0.5em; margin: 0.5em 0; width: 100%; }
+    .tabs button { background: #e0e0e0; color: #000; }
+    .tabs button.active { background: #007BFF; color: white; }
+    #topic-tabs button {
+      background: #e0e0e0;
+      color: #000;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+      padding: 0.5em 1em;
+    }
+    #topic-tabs button:hover {
+      background: #007BFF;
+      color: white;
+    }
+  </style>
 </head>
-<body class="flex items-center justify-center min-h-screen p-4">
-    <div class="bg-white p-8 rounded-xl shadow-2xl max-w-2xl w-full text-center">
-        <h1 class="text-4xl font-extrabold text-gray-900 mb-10">Integrated AI Assistant</h1>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <!-- Mentor Tile -->
-            <a href="mentor/ui/index.html" class="block">
-                <div class="bg-gradient-to-br from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 
-                            text-white p-8 rounded-xl shadow-lg transition-all duration-300 transform 
-                            hover:scale-105 hover:shadow-xl flex flex-col items-center justify-center h-48">
-                    <svg class="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"></path>
-                    </svg>
-                    <h2 class="text-2xl font-bold">Mentor</h2>
-                    <p class="mt-2 text-sm opacity-90">Get guidance and expert advice.</p>
-                </div>
-            </a>
-
-            <!-- Interview Assistant Tile -->
-            <a href="interview_assistant/ui/index.html" class="block">
-                <div class="bg-gradient-to-br from-green-500 to-teal-600 hover:from-green-600 hover:to-teal-700 
-                            text-white p-8 rounded-xl shadow-lg transition-all duration-300 transform 
-                            hover:scale-105 hover:shadow-xl flex flex-col items-center justify-center h-48">
-                    <svg class="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.797 0-7.5-.902-11.255-2.745M15 11a3 3 0 11-6 0 3 3 0 016 0zm9 0a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    <h2 class="text-2xl font-bold">Interview Assistant</h2>
-                    <p class="mt-2 text-sm opacity-90">Prepare and excel in your interviews.</p>
-                </div>
-            </a>
-        </div>
+<body>
+  <div class="container">
+    <!-- LOGIN -->
+    <div id="login-page">
+      <h2>Login</h2>
+      <input type="text" id="userId" placeholder="User ID" /><br/>
+      <input type="password" id="password" placeholder="Password" /><br/>
+      <button onclick="login()">Login</button>
     </div>
+
+    <!-- SKILL SELECTION -->
+    <div id="skill-page" class="hidden">
+      <h2>Welcome! I am your learning cohort. Which skill should we focus on?</h2>
+      <select id="skillSelect">
+        <option value="">-- Select a Skill --</option>
+        <option value="genai">Gen AI</option>
+        <option value="java">Java</option>
+      </select><br/>
+      <button onclick="loadConfig()">Continue</button>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div id="dashboard" class="hidden">
+      <h2 id="dashboard-title"></h2>
+      <div class="tabs">
+        <button class="active" onclick="showTab('mentor')">Mentor Me</button>
+        <button onclick="showTab('assess')">Assess Me</button>
+      </div>
+
+      <!-- Mentor Me Tab -->
+      <div id="mentor-tab">
+        <h3>Choose Level</h3>
+        <select id="levelSelect"></select><br/>
+        <button onclick="startMentorSession()">Start Mentorship</button>
+      </div>
+
+      <!-- Mentorship Topics Section -->
+      <div id="mentorship-session" class="hidden">
+        <h3>Mentorship Topics</h3>
+        <div id="topic-tabs"></div>
+        <div id="topic-content" style="margin-top: 1em; padding: 1em; border: 1px solid #ccc; border-radius: 6px; background: #fafafa;">
+          Select a topic to start learning...
+        </div>
+        <button onclick="endSession()">End Session</button>
+      </div>
+
+      <!-- Assess Me Tab -->
+      <div id="assess-tab" class="hidden">
+        <h3>Your Learned Topics</h3>
+        <ul id="learnedTopics"></ul>
+        <button onclick="takeAssessment(false)">Test Till Now</button>
+        <button onclick="takeAssessment(true)">Full Assessment</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+let currentUser = null;
+let currentSkill = null;
+let currentConfig = null;
+let currentSessionTopics = [];
+
+const mentorAPI = "http://localhost:8088";
+
+function login() {
+  const userId = document.getElementById('userId').value;
+  const password = document.getElementById('password').value;
+
+  fetch(`${mentorAPI}/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user_id: userId, password })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      currentUser = userId;
+      document.getElementById("login-page").classList.add("hidden");
+      document.getElementById("skill-page").classList.remove("hidden");
+    } else {
+      alert("Login failed");
+    }
+  });
+}
+
+function loadConfig() {
+  const skill = document.getElementById('skillSelect').value;
+  if (!skill) return alert("Please select a skill");
+  currentSkill = skill;
+
+  fetch(`${mentorAPI}/load_config?skill=${skill}`)
+    .then(res => res.json())
+    .then(config => {
+      currentConfig = config;
+
+      const levelSelect = document.getElementById("levelSelect");
+      levelSelect.innerHTML = "";
+      Object.keys(config.levels).forEach(level => {
+        let opt = document.createElement("option");
+        opt.value = level;
+        opt.innerText = level;
+        levelSelect.appendChild(opt);
+      });
+
+      document.getElementById("skill-page").classList.add("hidden");
+      document.getElementById("dashboard").classList.remove("hidden");
+      document.getElementById("dashboard-title").innerText = `${skill.toUpperCase()} Learning Platform`;
+    });
+}
+
+function showTab(tab) {
+  document.getElementById("mentor-tab").classList.add("hidden");
+  document.getElementById("assess-tab").classList.add("hidden");
+  document.getElementById("mentorship-session").classList.add("hidden");
+  document.querySelectorAll(".tabs button").forEach(btn => btn.classList.remove("active"));
+
+  if (tab === 'mentor') {
+    document.getElementById("mentor-tab").classList.remove("hidden");
+    document.querySelector(".tabs button:nth-child(1)").classList.add("active");
+  } else {
+    document.getElementById("assess-tab").classList.remove("hidden");
+    document.querySelector(".tabs button:nth-child(2)").classList.add("active");
+
+    fetch(`${mentorAPI}/user_progress?user_id=${currentUser}&skill=${currentSkill}`)
+      .then(res => res.json())
+      .then(data => {
+        const list = document.getElementById("learnedTopics");
+        list.innerHTML = "";
+        data.learned_topics.forEach(t => {
+          let li = document.createElement("li");
+          li.innerText = t;
+          list.appendChild(li);
+        });
+      });
+  }
+}
+
+function startMentorSession() {
+  const level = document.getElementById("levelSelect").value;
+  const skills = Object.keys(currentConfig.levels[level].assess_weightage);
+
+  fetch(`${mentorAPI}/start_session`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      user_id: currentUser,
+      skills,
+      difficulty: level,
+      role: "student"
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+    // Assume API returns an array of topics or fallback to current_topic
+    currentSessionTopics = data.topics || (data.current_topic ? [data.current_topic] : []);
+
+    if(currentSessionTopics.length === 0) {
+      alert("No topics returned from session start.");
+      return;
+    }
+
+    // Hide mentor tab UI, show mentorship session UI
+    document.getElementById("mentor-tab").classList.add("hidden");
+    document.getElementById("mentorship-session").classList.remove("hidden");
+
+    // Build topic tabs buttons
+    const topicTabs = document.getElementById("topic-tabs");
+    topicTabs.innerHTML = "";
+    currentSessionTopics.forEach((topic, idx) => {
+      let btn = document.createElement("button");
+      btn.innerText = topic;
+      btn.style.marginRight = "0.5em";
+      btn.onclick = () => loadTopicContent(topic);
+      topicTabs.appendChild(btn);
+
+      // Auto-click the first topic tab
+      if(idx === 0) loadTopicContent(topic);
+    });
+  });
+}
+
+function loadTopicContent(topic) {
+  const contentDiv = document.getElementById("topic-content");
+  // Placeholder content; replace this with actual teaching content or chatbot integration
+  contentDiv.innerHTML = `<h4>${topic}</h4><p>Teaching content for <b>${topic}</b> will appear here.</p>`;
+}
+
+function endSession() {
+  // Hide mentorship session, show mentor tab UI again
+  document.getElementById("mentorship-session").classList.add("hidden");
+  document.getElementById("mentor-tab").classList.remove("hidden");
+}
+
+function takeAssessment(fullTest) {
+  alert(fullTest ? "Starting full test (based on config)..." : "Starting partial test...");
+  // TODO: Load test page/modal
+}
+</script>
 </body>
 </html>
