@@ -5,10 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Mentor Me</title>
     <style>
-        /* Your existing CSS styles go here */
-        * {
-            box-sizing: border-box;
-        }
+        * { box-sizing: border-box; }
         body {
             margin: 0;
             font-family: 'Segoe UI', sans-serif;
@@ -18,7 +15,6 @@
             display: flex;
             flex-direction: column;
         }
-
         header {
             background-color: #004aad;
             color: white;
@@ -26,7 +22,6 @@
             text-align: center;
             flex-shrink: 0;
         }
-
         .footer {
             text-align: center;
             padding: 1rem;
@@ -34,13 +29,11 @@
             color: white;
             flex-shrink: 0;
         }
-
         .container {
             display: flex;
             flex: 1;
             overflow: hidden;
         }
-
         .sidebar {
             width: 280px;
             min-width: 200px;
@@ -50,26 +43,22 @@
             overflow-y: auto;
             flex-shrink: 0;
         }
-
         .sidebar h3, .sidebar h4 {
             margin-top: 0;
             margin-bottom: 0.5rem;
         }
-
         #logged-in-user {
             font-weight: bold;
             margin-bottom: 1rem;
             font-size: 1.1rem;
             color: #004aad;
         }
-
         #past-sessions {
             list-style: none;
             padding-left: 0;
             margin-top: 1rem;
             margin-bottom: 0;
         }
-
         #past-sessions li {
             background: white;
             margin-bottom: 0.75rem;
@@ -79,11 +68,9 @@
             box-shadow: 0 0 5px rgba(0,0,0,0.05);
             transition: background-color 0.2s ease;
         }
-
         #past-sessions li:hover {
             background-color: #d2e3fc;
         }
-
         .session-title {
             font-weight: 600;
             color: #004aad;
@@ -92,13 +79,11 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
-
         .session-meta {
             font-size: 0.75rem;
             color: #666;
             margin-bottom: 0.3rem;
         }
-
         .session-snippet {
             font-size: 0.85rem;
             color: #333;
@@ -107,21 +92,18 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
-
         .main-content-area {
             flex: 1;
             display: flex;
             flex-direction: column;
             overflow: hidden;
         }
-
         .chat-area {
             flex: 1;
             display: flex;
             flex-direction: column;
             overflow: hidden;
         }
-
         .messages {
             flex: 1;
             padding: 1rem;
@@ -130,7 +112,6 @@
             display: flex;
             flex-direction: column;
         }
-
         .message {
             margin: 0.5rem 0;
             padding: 0.75rem;
@@ -138,25 +119,21 @@
             max-width: 70%;
             position: relative;
             word-wrap: break-word;
-            white-space: pre-wrap; /* Ensures newlines and spaces are respected */
+            white-space: pre-wrap;
         }
-
         .message.user {
             background-color: #d2e3fc;
             align-self: flex-end;
         }
-
-        .message.assistant { /* Changed from .mentor to .assistant to match backend model */
+        .message.assistant {
             background-color: #ffffff;
             align-self: flex-start;
             border-left: 5px solid #004aad;
-            white-space: pre-wrap; /* Ensures newlines and spaces are respected */
+            white-space: pre-wrap;
         }
-
         .mentor-icon::before {
             content: "👨‍🏫 ";
         }
-
         .message time {
             display: block;
             font-size: 0.7rem;
@@ -165,28 +142,6 @@
             text-align: right;
             user-select: none;
         }
-
-        /* Styles for the audio button */
-        .message .audio-control {
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 1.2em;
-            margin-left: 0.5em;
-            vertical-align: middle;
-            color: #004aad; /* Match your primary color */
-            transition: color 0.2s ease;
-        }
-
-        .message .audio-control:hover:not(:disabled) {
-            color: #003580; /* Darker shade on hover */
-        }
-
-        .message .audio-control:disabled {
-            color: #b0c4de; /* Lighter color when disabled */
-            cursor: not-allowed;
-        }
-
         .input-box {
             display: flex;
             padding: 1rem;
@@ -195,7 +150,6 @@
             align-items: center;
             flex-shrink: 0;
         }
-
         .input-box textarea {
             flex: 1;
             padding: 0.75rem;
@@ -207,7 +161,6 @@
             max-height: 120px;
             overflow-y: auto;
         }
-
         .input-box button {
             background-color: #004aad;
             color: white;
@@ -220,20 +173,16 @@
             font-weight: 600;
             transition: background-color 0.3s ease;
         }
-
         .input-box button:disabled {
             background-color: #6699cc;
             cursor: not-allowed;
         }
-
         .hidden {
             display: none !important;
         }
-
         .form-group {
             margin-bottom: 1rem;
         }
-
         select, input[type="text"], input[type="password"], textarea {
             width: 100%;
             padding: 0.5rem;
@@ -242,7 +191,6 @@
             border: 1px solid #ccc;
             font-family: 'Segoe UI', sans-serif;
         }
-
         button {
             padding: 0.6rem 1rem;
             background-color: #004aad;
@@ -253,11 +201,9 @@
             font-weight: 600;
             transition: background-color 0.3s ease;
         }
-
         button:hover:not(:disabled) {
             background-color: #003580;
         }
-
         .login {
             max-width: 400px;
             margin: 2rem auto;
@@ -267,7 +213,6 @@
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
             flex-shrink: 0;
         }
-
         .setup {
             max-width: 600px;
             margin: 2rem auto;
@@ -292,16 +237,12 @@
         .setup button {
             margin-top: 1rem;
         }
-
-        /* Show password toggle */
         .password-wrapper {
             position: relative;
         }
-
         .password-wrapper input {
             padding-right: 2.5rem;
         }
-
         .toggle-password {
             position: absolute;
             top: 50%;
@@ -312,8 +253,6 @@
             color: #777;
             user-select: none;
         }
-
-        /* Typing indicator */
         #typing-indicator {
             font-style: italic;
             color: #666;
@@ -322,8 +261,6 @@
             user-select: none;
             text-align: center;
         }
-
-        /* NEW Skill Selection Styles */
         .skill-tag {
             background-color: #e8f0fe;
             color: #004aad;
@@ -335,18 +272,15 @@
             font-size: 0.95rem;
             white-space: nowrap;
         }
-
         .skill-tag:hover {
             background-color: #d2e3fc;
             border-color: #a8c8ff;
         }
-
         .skill-tag.selected {
             background-color: #004aad;
             color: white;
             border-color: #003580;
         }
-
         .selected-skill-item {
             background-color: #0056b3;
             color: white;
@@ -358,7 +292,6 @@
             font-size: 0.85rem;
             white-space: nowrap;
         }
-
         .selected-skill-item .remove-skill {
             background: none;
             border: none;
@@ -374,11 +307,29 @@
             justify-content: center;
             height: 1em;
         }
-
         #custom-skill-input-container button {
             padding: 0.5rem 0.8rem;
             font-size: 0.9rem;
             white-space: nowrap;
+        }
+        .suggestion-btn {
+            background-color: #e8f0fe;
+            color: #004aad;
+            border: 1px solid #c2d9ff;
+            border-radius: 20px;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin-right: 8px;
+            margin-bottom: 8px;
+        }
+        .suggestion-btn:hover {
+            background-color: #d0e3ff;
+        }
+        #suggestion-buttons-container {
+            display: flex;
+            gap: 10px;
+            margin: 1rem 1rem 0 1rem;
         }
     </style>
 </head>
@@ -397,7 +348,7 @@
         <div class="form-group password-wrapper">
             <label for="password">Password:</label>
             <input type="password" id="password" />
-            <span id="toggle-password" class="toggle-password" title="Show/Hide password">👁️</span>
+            <span id="toggle-password" class="toggle-password" title="Show/Hide password"></span>
         </div>
         <button id="login-btn" onclick="login()">Login</button>
         <p id="login-error" style="color: red;"></p>
@@ -455,6 +406,7 @@
 
             <div class="chat-area hidden" id="chat-messages-area">
                 <div class="messages" id="chat-messages"></div>
+                <div id="suggestion-buttons-container"></div>
                 <div id="typing-indicator" class="hidden">Mentor is typing...</div>
                 <div class="input-box">
                     <textarea id="user-input" placeholder="Ask your mentor..." rows="1"></textarea>
@@ -470,9 +422,10 @@
     </div>
 
     <script>
-        let chatHistory = []; // Stores objects like { role: 'user', content: '...', timestamp: ..., isIntro: boolean, isInitialIntro: boolean }
+        let chatHistory = [];
         let userId = "";
         let currentChatTitle = null;
+        let currentTopic = null;
         let typingTimeout;
         const loginBtn = document.getElementById('login-btn');
         const sendBtn = document.getElementById('send-btn');
@@ -481,8 +434,6 @@
         const setupSection = document.getElementById('setup-section');
         const chatMessagesArea = document.getElementById('chat-messages-area');
         const chatMessagesDiv = document.getElementById('chat-messages');
-
-        // NEW Skill Selection Elements
         const skillsSelectionContainer = document.getElementById('skills-selection-container');
         const othersSkillTag = document.getElementById('others-skill-tag');
         const customSkillInputContainer = document.getElementById('custom-skill-input-container');
@@ -491,11 +442,8 @@
         const noSkillsSelectedSpan = document.getElementById('no-skills-selected');
         const selectedSkillsHiddenInput = document.getElementById('selected-skills-hidden-input');
         let currentSelectedSkills = new Set();
-
-        // Define your API base URL here
         const API_BASE_URL = 'http://127.0.0.1:8086';
 
-        // Toggle password visibility
         document.getElementById('toggle-password').addEventListener('click', () => {
             const pwdInput = document.getElementById('password');
             if (pwdInput.type === 'password') {
@@ -507,13 +455,11 @@
             }
         });
 
-        // Auto-resize textarea
         document.getElementById('user-input').addEventListener('input', function() {
             this.style.height = 'auto';
             this.style.height = (this.scrollHeight) + 'px';
         });
 
-        // Enter to send, Shift+Enter for newline
         document.getElementById('user-input').addEventListener('keydown', function(e) {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -521,12 +467,10 @@
             }
         });
 
-        // --- Skill Selection Logic ---
         skillsSelectionContainer.addEventListener('click', (event) => {
             const target = event.target;
             if (target.classList.contains('skill-tag') && target.dataset.skill) {
                 const skill = target.dataset.skill;
-
                 if (skill === "Others") {
                     if (customSkillInputContainer.classList.contains('hidden')) {
                         customSkillInputContainer.classList.remove('hidden');
@@ -592,12 +536,10 @@
                     const skillItem = document.createElement('span');
                     skillItem.className = 'selected-skill-item';
                     skillItem.textContent = skill;
-
                     const removeButton = document.createElement('button');
                     removeButton.className = 'remove-skill';
                     removeButton.textContent = 'x';
                     removeButton.onclick = () => removeSkill(skill);
-
                     skillItem.appendChild(removeButton);
                     selectedSkillsDisplay.appendChild(skillItem);
                 });
@@ -606,8 +548,6 @@
         }
 
         document.addEventListener('DOMContentLoaded', updateSelectedSkillsDisplay);
-
-        // --- End Skill Selection Logic ---
 
         async function login() {
             userId = document.getElementById("userId").value.trim();
@@ -618,30 +558,25 @@
                 errorElem.textContent = "Please enter User ID and Password.";
                 return;
             }
-
             loginBtn.disabled = true;
             loginBtn.textContent = "Logging in...";
-
             try {
                 const res = await fetch(`${API_BASE_URL}/login`, {
                     method: "POST",
                     headers: {"Content-Type": "application/json"},
                     body: JSON.stringify({user_id: userId, password})
                 });
-
                 if (res.ok) {
                     document.getElementById("login-section").classList.add("hidden");
                     mainAppContainer.classList.remove("hidden");
                     showSetupSection();
                     document.getElementById("logged-in-user").textContent = userId;
-
                     const pref = localStorage.getItem(`prefs_${userId}`);
                     if (pref) {
                         try {
                             const parsed = JSON.parse(pref);
                             currentSelectedSkills = new Set(parsed.skills || []);
                             updateSelectedSkillsDisplay();
-
                             document.querySelectorAll('.skill-tag.predefined').forEach(tag => {
                                 if (currentSelectedSkills.has(tag.dataset.skill)) {
                                     tag.classList.add('selected');
@@ -650,7 +585,6 @@
                                 }
                             });
                             const hasNonPredefinedSkill = parsed.skills.some(s => !['Python', 'Machine Learning', 'Data Science', 'AI'].includes(s));
-
                             if (currentSelectedSkills.has("Others") || hasNonPredefinedSkill) {
                                 othersSkillTag.classList.add('selected');
                                 customSkillInputContainer.classList.remove('hidden');
@@ -658,14 +592,12 @@
                                 othersSkillTag.classList.remove('selected');
                                 customSkillInputContainer.classList.add('hidden');
                             }
-
                             if(parsed.difficulty) {
                                 document.getElementById("difficulty").value = parsed.difficulty;
                             }
                             if(parsed.role) {
                                 document.getElementById("role").value = parsed.role;
                             }
-
                         } catch { /* ignore parse errors */ }
                     }
                     await fetchChats();
@@ -684,9 +616,9 @@
         function showSetupSection() {
             setupSection.classList.remove("hidden");
             chatMessagesArea.classList.add("hidden");
-            chatHistory = []; // Clear chat history
+            chatHistory = [];
             currentChatTitle = null;
-            renderMessages(); // Re-render to clear display
+            renderMessages();
             currentSelectedSkills.clear();
             updateSelectedSkillsDisplay();
             document.querySelectorAll('.skill-tag.predefined').forEach(tag => tag.classList.remove('selected'));
@@ -701,7 +633,6 @@
                 const data = await res.json();
                 const list = document.getElementById("past-sessions");
                 list.innerHTML = "";
-
                 if (!data.chats || data.chats.length === 0) {
                     const li = document.createElement("li");
                     li.textContent = "No previous sessions";
@@ -710,40 +641,31 @@
                     list.appendChild(li);
                     return;
                 }
-
                 data.chats.sort((a, b) => {
-                    const dateA = new Date(a[2] * 1000 || 0); // Convert Unix timestamp (seconds) to milliseconds
+                    const dateA = new Date(a[2] * 1000 || 0);
                     const dateB = new Date(b[2] * 1000 || 0);
                     return dateB - dateA;
                 });
-
                 data.chats.forEach(chat => {
                     const chatId = chat[0];
                     const chatTitlePreview = chat[1];
                     const chatTimestamp = chat[2];
-
                     const li = document.createElement("li");
                     li.title = chatTitlePreview || "No Title";
                     li.onclick = () => loadChat(chatTitlePreview);
-
                     const titleDiv = document.createElement("div");
                     titleDiv.className = "session-title";
                     titleDiv.textContent = chatTitlePreview || "Untitled Session";
-
                     const metaDiv = document.createElement("div");
                     metaDiv.className = "session-meta";
-                    // Convert timestamp from seconds to milliseconds for Date constructor
                     const dt = chatTimestamp ? new Date(chatTimestamp * 1000) : null;
                     metaDiv.textContent = dt ? dt.toLocaleString() : "No Date";
-
                     const snippetDiv = document.createElement("div");
                     snippetDiv.className = "session-snippet";
                     snippetDiv.textContent = chatTitlePreview || "No preview available.";
-
                     li.appendChild(titleDiv);
                     li.appendChild(metaDiv);
                     li.appendChild(snippetDiv);
-
                     list.appendChild(li);
                 });
             } catch (e) {
@@ -759,22 +681,15 @@
                 if (!res.ok) throw new Error("Failed to load chat messages. Status: " + res.status);
                 const data = await res.json();
                 chatHistory = data.messages || [];
-
-                // When loading a chat, explicitly set isIntro to false for all messages.
-                // The backend doesn't store this, so we assume loaded messages are regular chat.
-                // Also set isInitialIntro to false as this is not the START of a new session.
                 chatHistory.forEach(msg => {
                     msg.isIntro = false;
-                    msg.isInitialIntro = false; // Important: Loaded messages are never the *initial* intro
-                    // Ensure timestamp is a number (if it comes as string from DB)
+                    msg.isInitialIntro = false;
                     if (typeof msg.timestamp === 'string') {
                         msg.timestamp = parseFloat(msg.timestamp);
                     }
                 });
-
                 currentChatTitle = title;
                 renderMessages();
-
                 setupSection.classList.add("hidden");
                 chatMessagesArea.classList.remove("hidden");
             } catch (e) {
@@ -787,12 +702,10 @@
             const skills = Array.from(currentSelectedSkills);
             const difficulty = document.getElementById("difficulty").value;
             const role = document.getElementById("role").value;
-
             if (skills.length === 0) {
                 alert("Please select at least one skill.");
                 return;
             }
-
             try {
                 sendBtn.disabled = true;
                 sendBtn.textContent = "Starting...";
@@ -803,26 +716,23 @@
                 });
                 if (!res.ok) throw new Error("Failed to start session. Status: " + res.status);
                 const data = await res.json();
-
                 localStorage.setItem(`prefs_${userId}`, JSON.stringify({ skills, difficulty, role }));
-
                 setupSection.classList.add("hidden");
                 chatMessagesArea.classList.remove("hidden");
-
-                currentChatTitle = data.title; // Get the generated unique title
-
-                // Create the initial mentor message object with isInitialIntro: true
+                currentChatTitle = data.title;
                 const introMessage = {
-                    role: "assistant", // Role for mentor
+                    role: "assistant",
                     content: data.intro_and_topics,
-                    timestamp: Date.now() / 1000, // Store in seconds to match backend
-                    isIntro: false, // This message is not a "regular" intro in the chat sense (for future proofing)
-                    isInitialIntro: true // Mark as the very first intro message to disable audio
+                    timestamp: Date.now() / 1000,
+                    isIntro: false,
+                    isInitialIntro: true
                 };
-                chatHistory = [introMessage]; // Reset history for new session and add intro
-                displayMessage(introMessage); // Display the intro message
-
-                await fetchChats(); // Refresh sidebar to show new session
+                chatHistory = [introMessage];
+                displayMessage(introMessage);
+                if (data.topics && data.topics.length > 0) {
+                    fetchAndShowTopicPrompts(data.topics[0], userId);
+                }
+                await fetchChats();
             } catch (e) {
                 console.error("Error starting session:", e);
                 alert("Failed to start session: " + e.message + ". Check console for details.");
@@ -832,47 +742,27 @@
             }
         }
 
-
         function renderMessages() {
-            chatMessagesDiv.innerHTML = ''; // Clear existing messages
+            chatMessagesDiv.innerHTML = '';
             chatHistory.forEach(msg => {
-                // Each msg is already an object like { role, content, timestamp, isIntro, isInitialIntro }
                 displayMessage(msg);
             });
-            chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight; // Scroll to bottom
+            chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
         }
 
-        // Updated displayMessage to accept a message object
         function displayMessage(messageObj) {
             const messageDiv = document.createElement('div');
-            messageDiv.classList.add('message', messageObj.role); // 'user' or 'assistant'
-
+            messageDiv.classList.add('message', messageObj.role);
             if (messageObj.role === 'assistant') {
                 messageDiv.classList.add('mentor-icon');
             }
-
             const contentSpan = document.createElement('span');
             contentSpan.textContent = messageObj.content;
             messageDiv.appendChild(contentSpan);
-
-            // Conditional rendering of the audio button:
-            // Only show if it's an 'assistant' message AND it's NOT explicitly marked as an initial intro message
-            // AND not a general "isIntro" if we decide to use that for other intro types later.
-            if (messageObj.role === 'assistant' && !messageObj.isInitialIntro) {
-                const audioControl = document.createElement('button');
-                audioControl.classList.add('audio-control');
-                audioControl.innerHTML = '🔊';
-                audioControl.title = 'Listen to this message';
-                audioControl.addEventListener('click', () => playMentorAudio(messageObj.content, audioControl));
-                messageDiv.appendChild(audioControl);
-            }
-
             const timeSpan = document.createElement('time');
-            // Convert Unix timestamp (seconds) to milliseconds for Date constructor
             const date = messageObj.timestamp ? new Date(messageObj.timestamp * 1000) : new Date();
             timeSpan.textContent = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             messageDiv.appendChild(timeSpan);
-
             chatMessagesDiv.appendChild(messageDiv);
             chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
         }
@@ -881,7 +771,6 @@
             const userInput = document.getElementById('user-input');
             const messageText = userInput.value.trim();
             if (messageText === '') return;
-
             if (!userId) {
                 alert("Please login first.");
                 return;
@@ -890,64 +779,54 @@
                 alert("Please start a new session or load a previous one first.");
                 return;
             }
-
-            // Create the user message object
             const userMessageObject = {
                 role: "user",
                 content: messageText,
-                timestamp: Date.now() / 1000 // Store in seconds to match backend
+                timestamp: Date.now() / 1000
             };
-
-            // Display user message immediately
             displayMessage(userMessageObject);
-            // Add user message to local chat history (this will be sent to backend)
             chatHistory.push(userMessageObject);
-
             userInput.value = '';
             userInput.style.height = 'auto';
-
             sendBtn.disabled = true;
             typingIndicator.classList.remove('hidden');
-
+            let container = document.getElementById('suggestion-buttons-container');
+            if (container) container.style.display = 'none';
             try {
-                // Construct the payload to match backend's ChatRequest model
+                // FIX: send only [role, content] for each message
                 const response = await fetch(`${API_BASE_URL}/chat`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         user_id: userId,
                         chat_title: currentChatTitle,
-                        chat_history: chatHistory // Send the full chat history
-                    })
+                        chat_history: chatHistory // <-- SEND AS ARRAY OF OBJECTS
+        })
                 });
-
                 const data = await response.json();
-
                 if (response.ok) {
-                    const mentorResponse = data.reply; // Backend returns 'reply'
+                    const mentorResponse = data.reply;
                     const mentorMessageObject = {
-                        role: "assistant", // Role for mentor
+                        role: "assistant",
                         content: mentorResponse,
-                        timestamp: Date.now() / 1000, // Store in seconds
-                        isIntro: false, // This is a regular chat message
-                        isInitialIntro: false // This is not the very first intro
+                        timestamp: Date.now() / 1000,
+                        isIntro: false,
+                        isInitialIntro: false
                     };
                     displayMessage(mentorMessageObject);
-                    chatHistory.push(mentorMessageObject); // Add mentor's reply to local history
-
-                    await fetchChats(); // Refresh sidebar to show updated session
+                    chatHistory.push(mentorMessageObject);
+                    await fetchChats();
                 } else {
-                    // Improved error message parsing from FastAPI's 422 detail
                     let errorMessage = "Unknown error.";
                     if (response.status === 422 && data && data.detail) {
                         errorMessage = Array.isArray(data.detail) ?
                                        data.detail.map(err => `${err.loc.join('.')}: ${err.msg}`).join('; ') :
                                        data.detail;
-                    } else if (data && data.detail) { // Other HTTP errors with a detail field
+                    } else if (data && data.detail) {
                         errorMessage = data.detail;
-                    } else if (data && data.message) { // Fallback for custom backend messages
+                    } else if (data && data.message) {
                         errorMessage = data.message;
-                    } else { // Generic HTTP status message
+                    } else {
                         errorMessage = `Server responded with status ${response.status}.`;
                     }
                     displayMessage({ role: 'assistant', content: `Error: ${errorMessage}`, timestamp: Date.now() / 1000 });
@@ -961,31 +840,49 @@
             }
         }
 
+        async function fetchAndShowTopicPrompts(topic, userId) {
+            const res = await fetch(`${API_BASE_URL}/get_topic_prompts`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ topic: topic, user_id: userId })
+            });
+            const data = await res.json();
+            showPromptButtons(data.prompts);
+        }
+
+        function showPromptButtons(prompts) {
+            let container = document.getElementById('suggestion-buttons-container');
+            container.innerHTML = '';
+            prompts.forEach(prompt => {
+                const btn = document.createElement('button');
+                btn.textContent = prompt;
+                btn.className = 'suggestion-btn';
+                btn.onclick = () => {
+                    document.getElementById('user-input').value = prompt;
+                    sendMessage();
+                    container.style.display = 'none';
+                };
+                container.appendChild(btn);
+            });
+            container.style.display = prompts.length > 0 ? 'flex' : 'none';
+        }
+
         async function playMentorAudio(text, buttonElement) {
             buttonElement.disabled = true;
             buttonElement.textContent = '...';
-
             try {
                 const encodedText = encodeURIComponent(text);
                 const audioRequestUrl = `${API_BASE_URL}/text_to_speech_direct?text=${encodedText}`;
-
-                const res = await fetch(audioRequestUrl, {
-                    method: "GET",
-                });
-
+                const res = await fetch(audioRequestUrl, { method: "GET" });
                 if (!res.ok) {
                     const errorText = await res.text();
                     throw new Error(`Failed to get audio: ${res.status} - ${errorText}`);
                 }
-
                 const audioBlob = await res.blob();
-
                 if (audioBlob.size === 0) {
                     throw new Error("Received empty audio file from server.");
                 }
-
                 const audioUrl = URL.createObjectURL(audioBlob);
-
                 const audio = new Audio(audioUrl);
                 audio.onended = () => {
                     buttonElement.disabled = false;
@@ -999,7 +896,6 @@
                     alert("Failed to play audio. Check console for details.");
                     URL.revokeObjectURL(audioUrl);
                 };
-
                 await audio.play().catch(playError => {
                     console.error("audio.play() Promise rejected (likely autoplay policy):", playError);
                     alert("Audio playback might be blocked by your browser's autoplay policy. Please try again or check browser settings.");
@@ -1007,7 +903,6 @@
                     buttonElement.textContent = '🔊';
                     URL.revokeObjectURL(audioUrl);
                 });
-
             } catch (error) {
                 console.error("Error in playMentorAudio catch block:", error);
                 alert("Could not play audio: " + error.message);
