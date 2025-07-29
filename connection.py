@@ -51,7 +51,7 @@ class Connection:
         self,
         messages: List[ChatCompletionMessageParam], # Expects OpenAI message format [{"role": "user", "content": "..."}]
         temperature: float = 0.3,
-        max_tokens: int = 1024
+        max_tokens: int = 2024
     ) -> str:
         """
         Makes a chat completion call using the configured OpenAI client and deployment.

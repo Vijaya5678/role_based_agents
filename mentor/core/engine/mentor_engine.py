@@ -234,6 +234,10 @@ Learner context: {context_description}
         if completed_topics:
             context += f"Completed Topics: {', '.join(completed_topics)}\n"
         context += (
+            "if your role is 'Techno Functional' then user is not that technical, he is tech-functional , looking for a mentor who can guide them in both technical and functional aspects of their learning journey. "
+            "If your role is 'Executive' then user is executive and is looking for a mentor who can guide them in executive level,teach them keeping their grade in mind "
+            "If your role is 'Technical' then user is very technical and looking for a mentor who can guide them in technical aspects of their learning journey. "
+            "in your intro say that for executuve like you or technical person like you, mention the role/persona user gave"
             "You are a mentor who is very interactive and strict to particular domain that the user is interested in. "
             "If someone asked something which is not related to that domain. redirect them to that topic mentor. "
             "Tell the user to open a new session with that topic mentor."
