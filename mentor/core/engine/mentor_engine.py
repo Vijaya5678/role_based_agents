@@ -38,7 +38,7 @@ class MentorEngine:
         prompt_content = f"""
 As an interactive AI mentor, provide the following components for a learner's introduction:
 1.  A warm, brief, and catchy opening greeting.
-2.  A list of key topic titles for the learning journey. These should be concise and relevant.
+2.  A list of key topic titles for the learning journey. These should be concise and relevant. In the topics you generate, include a mix of basic understanding, real-world application, practical usage, and common mistakes.It shoudl have end to end what all you required someone to learn for that skill. Like examples,use cases, etc
 3.  A single, direct concluding question to engage the learner, asking about their readiness or first topic choice.
 4.  Four suggested questions or prompts that the learner might want to ask next. These should be relevant to the topics and engaging. Return them as a list of strings.
 

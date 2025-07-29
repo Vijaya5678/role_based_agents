@@ -3,405 +3,638 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Mentor Me</title>
+    <title>Mentora</title>
     <style>
-        * { box-sizing: border-box; }
-        body {
+        * {
             margin: 0;
-            font-family: 'Segoe UI', sans-serif;
-            background-color: #f4f7fc;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f5f7fa;
             color: #333;
+            line-height: 1.6;
             height: 100vh;
             display: flex;
             flex-direction: column;
         }
+
         header {
-            background-color: #004aad;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 25px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 1rem;
-            text-align: center;
             flex-shrink: 0;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
         }
+        
+        .header-title-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+            justify-content: center;
+        }
+
+        .header-title-container .logo {
+             width: 40px;
+             height: 40px;
+        }
+
+        header h1 {
+            font-size: 2.2rem;
+            font-weight: 600;
+        }
+        
+        #logged-in-user-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background-color: rgba(255, 255, 255, 0.15);
+            padding: 6px 12px;
+            border-radius: 20px;
+            width: 200px;
+            justify-content: flex-end;
+        }
+        #logged-in-user-container span {
+            font-size: 0.9rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        #logged-in-user {
+            font-weight: bold;
+            color: #ffffff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+
         .footer {
             text-align: center;
             padding: 1rem;
-            background-color: #004aad;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             flex-shrink: 0;
+            font-size: 0.9rem;
         }
+
         .container {
             display: flex;
             flex: 1;
             overflow: hidden;
+            width: 100%;
+            padding: 20px;
+            gap: 20px;
         }
+
         .sidebar {
             width: 280px;
-            min-width: 200px;
-            background-color: #e8f0fe;
-            padding: 1rem;
-            border-right: 1px solid #ccc;
+            min-width: 250px;
+            background-color: #ffffff;
+            padding: 1.5rem;
+            border-radius: 15px;
             overflow-y: auto;
             flex-shrink: 0;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
         }
-        .sidebar h3, .sidebar h4 {
+
+        .sidebar h4 {
             margin-top: 0;
-            margin-bottom: 0.5rem;
-        }
-        #logged-in-user {
-            font-weight: bold;
-            margin-bottom: 1rem;
+            margin-bottom: 0.75rem;
+            color: #4a5568;
             font-size: 1.1rem;
-            color: #004aad;
+            font-weight: 600;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 8px;
         }
+
         #past-sessions {
             list-style: none;
             padding-left: 0;
             margin-top: 1rem;
             margin-bottom: 0;
         }
+
         #past-sessions li {
-            background: white;
+            background: #f8f9fa;
             margin-bottom: 0.75rem;
-            padding: 0.6rem 0.8rem;
-            border-radius: 6px;
+            padding: 0.8rem 1rem;
+            border-radius: 10px;
             cursor: pointer;
-            box-shadow: 0 0 5px rgba(0,0,0,0.05);
-            transition: background-color 0.2s ease;
+            border-left: 4px solid transparent;
+            transition: all 0.3s ease;
         }
+
         #past-sessions li:hover {
-            background-color: #d2e3fc;
+            transform: translateX(5px);
+            background: #e9ecef;
+            border-left: 4px solid #667eea;
         }
+
         .session-title {
             font-weight: 600;
-            color: #004aad;
+            color: #2d3748;
             margin-bottom: 0.2rem;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
+
         .session-meta {
-            font-size: 0.75rem;
-            color: #666;
+            font-size: 0.8rem;
+            color: #6c757d;
             margin-bottom: 0.3rem;
         }
+
         .session-snippet {
             font-size: 0.85rem;
-            color: #333;
+            color: #495057;
             max-height: 2.8em;
             line-height: 1.4em;
             overflow: hidden;
             text-overflow: ellipsis;
         }
+
         .main-content-area {
             flex: 1;
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
         }
+
         .chat-area {
             flex: 1;
             display: flex;
             flex-direction: column;
             overflow: hidden;
         }
+
         .messages {
             flex: 1;
-            padding: 1rem;
+            padding: 20px;
             overflow-y: auto;
-            background-color: white;
+            background-color: #f8f9fa99;
             display: flex;
             flex-direction: column;
+            gap: 18px;
         }
+
         .message {
-            margin: 0.5rem 0;
-            padding: 0.75rem;
-            border-radius: 8px;
-            max-width: 70%;
+            max-width: 80%;
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .message.user {
+            align-self: flex-end;
+            flex-direction: row-reverse;
+        }
+
+        .message.assistant {
+            align-self: flex-start;
+        }
+
+        .message-icon {
+            flex-shrink: 0;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .message.user .message-icon {
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+        }
+
+        .message.assistant .message-icon {
+            background-color: #96c2f0;
+        }
+
+        .message-icon svg {
+            width: 22px;
+            height: 22px;
+        }
+        .message.user .message-icon svg {
+            fill: white;
+        }
+        .message.assistant .message-icon svg {
+            fill: #343a40;
+        }
+
+        .message-bubble {
+            padding: 12px 18px;
             position: relative;
             word-wrap: break-word;
             white-space: pre-wrap;
+            line-height: 1.5;
         }
-        .message.user {
-            background-color: #d2e3fc;
-            align-self: flex-end;
+
+        .message.user .message-bubble {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 18px 18px 4px 18px;
         }
-        .message.assistant {
-            background-color: #ffffff;
-            align-self: flex-start;
-            border-left: 5px solid #004aad;
-            white-space: pre-wrap;
+
+        .message.assistant .message-bubble {
+            background-color: #b4caf652;
+            color: #343a40;
+            border-radius: 18px 18px 18px 4px;
         }
+        
         .mentor-icon::before {
-            content: "👨‍🏫 ";
+            content: none;
         }
+
         .message time {
             display: block;
-            font-size: 0.7rem;
-            color: #777;
-            margin-top: 0.3rem;
+            font-size: 0.75rem;
+            color: #adb5bd;
+            margin-top: 5px;
             text-align: right;
             user-select: none;
         }
+        .message.user time {
+            color: #e0e0e0;
+        }
+
         .input-box {
             display: flex;
-            padding: 1rem;
-            background-color: #f1f1f1;
-            border-top: 1px solid #ccc;
+            padding: 1rem 1.5rem;
+            background-color: #ffffff;
+            border-top: 1px solid #dee2e6;
             align-items: center;
+            gap: 10px;
             flex-shrink: 0;
         }
+
         .input-box textarea {
             flex: 1;
-            padding: 0.75rem;
-            border: 1px solid #ccc;
-            border-radius: 5px;
+            padding: 12px 15px;
+            border: 2px solid #dee2e6;
+            border-radius: 20px;
             font-size: 1rem;
-            resize: vertical;
-            min-height: 40px;
-            max-height: 120px;
+            resize: none;
+            min-height: 48px;
+            max-height: 150px;
             overflow-y: auto;
+            font-family: inherit;
+            transition: border-color 0.3s ease;
         }
-        .input-box button {
-            background-color: #004aad;
-            color: white;
-            padding: 0.75rem 1rem;
-            border: none;
-            margin-left: 0.5rem;
-            border-radius: 5px;
-            cursor: pointer;
-            min-width: 80px;
-            font-weight: 600;
-            transition: background-color 0.3s ease;
+        .input-box textarea:focus {
+            outline: none;
+            border-color: #667eea;
         }
-        .input-box button:disabled {
-            background-color: #6699cc;
-            cursor: not-allowed;
-        }
+
         .hidden {
             display: none !important;
         }
+
         .form-group {
-            margin-bottom: 1rem;
+            margin-bottom: 25px;
         }
-        select, input[type="text"], input[type="password"], textarea {
-            width: 100%;
-            padding: 0.5rem;
-            font-size: 1rem;
-            border-radius: 5px;
-            border: 1px solid #ccc;
-            font-family: 'Segoe UI', sans-serif;
-        }
-        button {
-            padding: 0.6rem 1rem;
-            background-color: #004aad;
-            color: white;
-            border: none;
-            cursor: pointer;
-            border-radius: 4px;
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
             font-weight: 600;
-            transition: background-color 0.3s ease;
+            color: #4a5568;
+            font-size: 1rem;
         }
-        button:hover:not(:disabled) {
-            background-color: #003580;
-        }
-        .login {
-            max-width: 400px;
-            margin: 2rem auto;
-            background: white;
-            padding: 2rem;
+
+        select, input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            font-size: 1rem;
             border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            border: 2px solid #e2e8f0;
+            font-family: inherit;
+            transition: border-color 0.3s ease;
+        }
+        select:focus, input[type="text"]:focus, input[type="password"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+        .btn-primary:disabled {
+            background: #b3b9e8;
+            cursor: not-allowed;
+        }
+
+        /* --- Send button Icon Styling --- */
+        #send-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
             flex-shrink: 0;
         }
-        .setup {
-            max-width: 600px;
-            margin: 2rem auto;
+        #send-btn:hover:not(:disabled) {
+             box-shadow: 0 4px 15px rgba(102, 126, 234, 0.5);
+             transform: translateY(-1px);
+        }
+        #send-btn:disabled {
+            background: #b3b9e8;
+            cursor: not-allowed;
+        }
+        #send-btn svg {
+            width: 24px;
+            height: 24px;
+            fill: white;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .loading-spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+
+
+        /* .btn-secondary {
+            background: #e2e8f0;
+            color: #4a5568;
+        } */
+        .btn-secondary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            border: transparent;}
+        .btn-secondary:hover:not(:disabled) {
+            background: #cbd5e0;
+        }
+
+        .login {
+            max-width: 450px;
+            margin: auto;
             background: white;
-            padding: 2rem;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-            width: 90%;
-            flex-grow: 1;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            flex-shrink: 0;
+        }
+        .login h2 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #4a5568;
+            font-size: 1.8rem;
+        }
+
+        .setup {
+            padding: 40px;
+            width: 100%;
+            height: 100%;
             display: flex;
             flex-direction: column;
             align-items: center;
+            justify-content: center;
             text-align: center;
             overflow-y: auto;
-            padding-bottom: 2rem;
         }
-        .setup .form-group {
+        .setup-content {
+            max-width: 500px;
             width: 100%;
-            max-width: 400px;
+        }
+         .setup h2 {
+            color: #4a5568;
+            margin-bottom: 30px;
+            font-size: 1.8rem;
+        }
+
+        .setup .form-group {
             text-align: left;
         }
-        .setup button {
-            margin-top: 1rem;
-        }
-        .password-wrapper {
-            position: relative;
-        }
-        .password-wrapper input {
-            padding-right: 2.5rem;
-        }
-        .toggle-password {
-            position: absolute;
-            top: 50%;
-            right: 0.7rem;
-            transform: translateY(-50%);
-            cursor: pointer;
-            font-size: 1.1rem;
-            color: #777;
-            user-select: none;
-        }
+        
         #typing-indicator {
             font-style: italic;
             color: #666;
-            margin: 0 1rem 0.5rem 1rem;
+            margin: 0 1.5rem 0.5rem;
             height: 1.5rem;
             user-select: none;
-            text-align: center;
+            text-align: left;
+            padding-left: 5px;
         }
+
         .skill-tag {
-            background-color: #e8f0fe;
-            color: #004aad;
-            padding: 8px 12px;
+            background: #e9ecef;
+            color: #495057;
+            padding: 8px 15px;
             border-radius: 20px;
             cursor: pointer;
-            border: 1px solid #c2d9ff;
+            border: 2px solid transparent;
             transition: all 0.2s ease;
             font-size: 0.95rem;
+            font-weight: 500;
             white-space: nowrap;
         }
         .skill-tag:hover {
-            background-color: #d2e3fc;
-            border-color: #a8c8ff;
+            border-color: #bdc5e8;
         }
+
         .skill-tag.selected {
-            background-color: #004aad;
+            background: #667eea;
             color: white;
-            border-color: #003580;
+            border-color: #667eea;
+        }
+
+        #selected-skills-display {
+            border: 2px solid #e2e8f0;
+            padding: 10px;
+            min-height: 48px;
+            border-radius: 8px;
+            background-color: #fff;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            margin-top: 10px;
         }
         .selected-skill-item {
-            background-color: #0056b3;
+            background-color: #667eea;
             color: white;
-            padding: 5px 8px;
-            border-radius: 3px;
+            padding: 5px 12px;
+            border-radius: 15px;
             display: inline-flex;
             align-items: center;
-            gap: 5px;
-            font-size: 0.85rem;
+            gap: 8px;
+            font-size: 0.9rem;
             white-space: nowrap;
         }
         .selected-skill-item .remove-skill {
             background: none;
-            border: none;
+            border: 1px solid white;
             color: white;
             font-weight: bold;
             cursor: pointer;
-            padding: 0 3px;
+            padding: 0;
             line-height: 1;
-            font-size: 1em;
-            margin-left: 5px;
+            font-size: 0.8em;
             display: flex;
             align-items: center;
             justify-content: center;
-            height: 1em;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+        }
+
+        #custom-skill-input-container {
+            margin-top: 10px;
         }
         #custom-skill-input-container button {
-            padding: 0.5rem 0.8rem;
+            padding: 12px 18px;
             font-size: 0.9rem;
-            white-space: nowrap;
         }
+
         .suggestion-btn {
-            background-color: #e8f0fe;
-            color: #004aad;
-            border: 1px solid #c2d9ff;
-            border-radius: 20px;
-            padding: 8px 16px;
-            cursor: pointer;
-            font-size: 1rem;
-            margin-right: 8px;
-            margin-bottom: 8px;
+             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+             color: #ffffff;
+             border-radius: 20px;
+             padding: 8px 16px;
+             cursor: pointer;
+             font-size: 0.95rem;
+             border:transparent;
+             transition: background-color 0.3s ease;
         }
         .suggestion-btn:hover {
-            background-color: #d0e3ff;
+            background-color: #cbd5e0;
         }
         #suggestion-buttons-container {
             display: flex;
+            flex-wrap: wrap;
             gap: 10px;
-            margin: 1rem 1rem 0 1rem;
+            padding: 0 1.5rem 1rem;
         }
     </style>
 </head>
 <body>
 
     <header>
-        <h1>Mentor Me</h1>
+        <div style="width: 200px;"></div> <!-- Spacer -->
+        <div class="header-title-container">
+            <svg class="logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" style="stop-color:#a29bfe;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#667eea;stop-opacity:1" />
+                    </linearGradient>
+                </defs>
+                <path fill="url(#logoGradient)" d="M50,5A45,45,0,1,1,5,50,45,45,0,0,1,50,5M50,0a50,50,0,1,0,50,50A50,50,0,0,0,50,0Z"/>
+                <path fill="white" d="M50 20 L 30 35 L 50 50 L 70 35 L 50 20 Z M 50 55 L 30 70 L 50 85 L 70 70 L 50 55 Z"/>
+            </svg>
+            <h1>Mentora</h1>
+        </div>
+        <div id="logged-in-user-container" class="hidden">
+            <span>Logged in as: </span>
+            <span id="logged-in-user"></span>
+        </div>
     </header>
 
     <div class="login" id="login-section">
-        <h2>Login</h2>
+        <h2>Welcome Back!</h2>
         <div class="form-group">
             <label for="userId">User ID:</label>
             <input type="text" id="userId" />
         </div>
-        <div class="form-group password-wrapper">
+        <div class="form-group">
             <label for="password">Password:</label>
             <input type="password" id="password" />
-            <span id="toggle-password" class="toggle-password" title="Show/Hide password"></span>
         </div>
-        <button id="login-btn" onclick="login()">Login</button>
-        <p id="login-error" style="color: red;"></p>
+        <button id="login-btn" class="btn btn-primary" style="width: 100%;" onclick="login()">Login</button>
+        <p id="login-error" style="color: #e53e3e; margin-top: 15px; text-align: center;"></p>
     </div>
 
     <div class="container hidden" id="main-app-container">
         <div class="sidebar">
-            <h3>Logged in as:</h3>
-            <div id="logged-in-user"></div>
-            <button onclick="showSetupSection()" style="margin-bottom: 1rem; width: 100%;">New Session</button>
+            <button onclick="showSetupSection()" class="btn btn-secondary" style="margin-bottom: 1rem; width: 100%;">New Session</button>
             <h4>Previous Sessions</h4>
             <ul id="past-sessions" title="Click to load session"></ul>
         </div>
 
         <div class="main-content-area" id="dynamic-content-area">
-
             <div class="setup" id="setup-section">
-                <h2>Set Learning Preferences</h2>
-                <div class="form-group">
-                    <label>Skills:</label>
-                    <div id="skills-selection-container" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;">
-                        <span class="skill-tag predefined" data-skill="Python">Python</span>
-                        <span class="skill-tag predefined" data-skill="Machine Learning">Machine Learning</span>
-                        <span class="skill-tag predefined" data-skill="Data Science">Data Science</span>
-                        <span class="skill-tag predefined" data-skill="AI">AI</span>
-                        <span class="skill-tag predefined" data-skill="Others" id="others-skill-tag">Others</span>
+                <div class="setup-content">
+                    <h2>Personalize Your Learning Journey</h2>
+                    <div class="form-group">
+                        <label for="Choose_Your_Persona">Choose Your Persona:</label>
+                        <select id="role">
+                            <option value="Techno_Functional">Techno Functional</option>
+                            <option value="Executive">Executive</option>
+                            <option value="Technical">Technical</option>
+                        </select>
                     </div>
-                    <div id="custom-skill-input-container" class="hidden" style="display: flex; gap: 5px;">
-                        <input type="text" id="custom-skill-input" placeholder="Type custom skill" style="flex: 1;"/>
-                        <button type="button" onclick="addCustomSkill()">Add</button>
+                    <div class="form-group">
+                        <label for="difficulty"></label>Choose Your Level:</label>
+                        <select id="difficulty">
+                            <option value="Beginner">Beginner</option>
+                            <option value="Intermediate">Intermediate</option>
+                            <option value="Advanced">Advanced</option>
+                        </select>
                     </div>
-                    <div id="selected-skills-display" style="border: 1px solid #ccc; padding: 5px; min-height: 40px; border-radius: 5px; background-color: #fff; display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin-top: 10px;">
-                        <span id="no-skills-selected" style="color: #999;">Click skills above to add</span>
+                    <div class="form-group">
+                        <label>Skills:</label>
+                        <div id="skills-selection-container" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;">
+                            <span class="skill-tag predefined" data-skill="Gen AI">Gen AI</span>
+                            <span class="skill-tag predefined" data-skill="Python">Python</span>
+                            <span class="skill-tag predefined" data-skill="Machine Learning">Machine Learning</span>
+                            <span class="skill-tag predefined" data-skill="JAVA">JAVA</span>
+                            <span class="skill-tag predefined" data-skill="AI">AI Agents</span>
+                            <span class="skill-tag predefined" data-skill="Others" id="others-skill-tag">Others</span>
+                        </div>
+                        <div id="custom-skill-input-container" class="hidden" style="display: flex; gap: 5px;">
+                            <input type="text" id="custom-skill-input" placeholder="Type custom skill" style="flex: 1;"/>
+                            <button type="button" class="btn btn-primary" onclick="addCustomSkill()">Add</button>
+                        </div>
+                        <div id="selected-skills-display">
+                            <span id="no-skills-selected" style="color: #999; font-size: 0.9rem;">Click skills above to add</span>
+                        </div>
+                        <input type="hidden" id="selected-skills-hidden-input" name="selected_skills" value="" />
                     </div>
-                    <input type="hidden" id="selected-skills-hidden-input" name="selected_skills" value="" />
+                    
+                    
+                    <button onclick="startSession()" class="btn btn-primary" style="width: 100%;">Start Session</button>
                 </div>
-                <div class="form-group">
-                    <label for="difficulty">Difficulty:</label>
-                    <select id="difficulty">
-                        <option value="Beginner">Beginner</option>
-                        <option value="Intermediate">Intermediate</option>
-                        <option value="Advanced">Advanced</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="Choose_Your_Persona">Choose Your Persona:</label>
-                    <select id="role">
-                        <option value="Techno_Functional">Techno Functional</option>
-                        <option value="Executive">Executive</option>
-                        <option value="Technical">Technical</option>
-                    </select>
-                </div>
-                <button onclick="startSession()">Start Session</button>
             </div>
 
             <div class="chat-area hidden" id="chat-messages-area">
@@ -410,15 +643,16 @@
                 <div id="typing-indicator" class="hidden">Mentor is typing...</div>
                 <div class="input-box">
                     <textarea id="user-input" placeholder="Ask your mentor..." rows="1"></textarea>
-                    <button id="send-btn" onclick="sendMessage()">Send</button>
+                    <button id="send-btn" onclick="sendMessage()">
+                         <!-- SVG icon will be injected by JS -->
+                    </button>
                 </div>
             </div>
-
         </div>
     </div>
 
     <div class="footer">
-        Powered by HCL 2025
+        Powered by HCLTech 2025
     </div>
 
     <script>
@@ -441,19 +675,23 @@
         const selectedSkillsDisplay = document.getElementById('selected-skills-display');
         const noSkillsSelectedSpan = document.getElementById('no-skills-selected');
         const selectedSkillsHiddenInput = document.getElementById('selected-skills-hidden-input');
+        const loggedInUserContainer = document.getElementById('logged-in-user-container');
         let currentSelectedSkills = new Set();
         const API_BASE_URL = 'http://127.0.0.1:8086';
+        
+        // --- SVG Icons ---
+        const sendIconSVG = `<svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>`;
+        const loadingSpinnerHTML = `<div class="loading-spinner"></div>`;
 
-        document.getElementById('toggle-password').addEventListener('click', () => {
-            const pwdInput = document.getElementById('password');
-            if (pwdInput.type === 'password') {
-                pwdInput.type = 'text';
-                document.getElementById('toggle-password').textContent = '🙈';
-            } else {
-                pwdInput.type = 'password';
-                document.getElementById('toggle-password').textContent = '👁️';
-            }
-        });
+        function setSendButtonToSend() {
+            sendBtn.innerHTML = sendIconSVG;
+            sendBtn.disabled = false;
+        }
+
+        function setSendButtonToLoading() {
+            sendBtn.innerHTML = loadingSpinnerHTML;
+            sendBtn.disabled = true;
+        }
 
         document.getElementById('user-input').addEventListener('input', function() {
             this.style.height = 'auto';
@@ -547,7 +785,10 @@
             selectedSkillsHiddenInput.value = JSON.stringify(Array.from(currentSelectedSkills));
         }
 
-        document.addEventListener('DOMContentLoaded', updateSelectedSkillsDisplay);
+        document.addEventListener('DOMContentLoaded', () => {
+             updateSelectedSkillsDisplay();
+             setSendButtonToSend(); // Initialize send button icon
+        });
 
         async function login() {
             userId = document.getElementById("userId").value.trim();
@@ -569,6 +810,7 @@
                 if (res.ok) {
                     document.getElementById("login-section").classList.add("hidden");
                     mainAppContainer.classList.remove("hidden");
+                    loggedInUserContainer.classList.remove("hidden"); // Show user info
                     showSetupSection();
                     document.getElementById("logged-in-user").textContent = userId;
                     const pref = localStorage.getItem(`prefs_${userId}`);
@@ -641,7 +883,6 @@
                     list.appendChild(li);
                     return;
                 }
-                // Show most recent first
                 data.chats.sort((a, b) => {
                     const dateA = new Date(a.created_at || a[2] || 0);
                     const dateB = new Date(b.created_at || b[2] || 0);
@@ -658,7 +899,6 @@
 
                     const titleDiv = document.createElement("div");
                     titleDiv.className = "session-title";
-                    // Show a more readable title (replace underscores with spaces, remove timestamp/uuid)
                     titleDiv.textContent = chatTitle.replace(/_\d{8,}_\w{4}$/, '').replace(/_/g, ' ');
 
                     const metaDiv = document.createElement("div");
@@ -668,14 +908,12 @@
 
                     const snippetDiv = document.createElement("div");
                     snippetDiv.className = "session-snippet";
-                    snippetDiv.textContent = ""; // We'll fetch the preview below
+                    snippetDiv.textContent = ""; 
 
-                    // Fetch the first message for this chat for preview
                     fetch(`${API_BASE_URL}/get_chat_messages?user_id=${encodeURIComponent(userId)}&title=${encodeURIComponent(chatTitle)}`)
                         .then(res => res.json())
                         .then(data => {
                             if (data.messages && data.messages.length > 0) {
-                                // Find the first assistant message
                                 const firstAssistant = data.messages.find(m => m.role === "assistant");
                                 if (firstAssistant) {
                                     snippetDiv.textContent = firstAssistant.content.split('\n')[0].slice(0, 60) + "...";
@@ -726,9 +964,10 @@
                 alert("Please select at least one skill.");
                 return;
             }
+            const startBtn = document.querySelector('.setup button');
             try {
-                sendBtn.disabled = true;
-                sendBtn.textContent = "Starting...";
+                startBtn.disabled = true;
+                startBtn.textContent = "Starting...";
                 const res = await fetch(`${API_BASE_URL}/start_session`, {
                     method: "POST",
                     headers: {"Content-Type": "application/json"},
@@ -757,8 +996,8 @@
                 console.error("Error starting session:", e);
                 alert("Failed to start session: " + e.message + ". Check console for details.");
             } finally {
-                sendBtn.disabled = false;
-                sendBtn.textContent = "Send";
+                startBtn.disabled = false;
+                startBtn.textContent = "Start Session";
             }
         }
 
@@ -769,20 +1008,34 @@
             });
             chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
         }
-
+        
         function displayMessage(messageObj) {
             const messageDiv = document.createElement('div');
             messageDiv.classList.add('message', messageObj.role);
-            if (messageObj.role === 'assistant') {
-                messageDiv.classList.add('mentor-icon');
+
+            const iconDiv = document.createElement('div');
+            iconDiv.className = 'message-icon';
+            if (messageObj.role === 'user') {
+                iconDiv.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>`;
+            } else { 
+                iconDiv.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#343a40"><path d="M12 3L1 9l4 2.18v6.32l7 3.51 7-3.51v-6.32L23 9l-11-6zm-7 8.18L12 15l7-3.82L12 7.36 5 11.18zM12 16.5l-4-2v-3.5l4 2 4-2v3.5l-4 2z"/></svg>`;
             }
+
+            const bubbleDiv = document.createElement('div');
+            bubbleDiv.className = 'message-bubble';
+
             const contentSpan = document.createElement('span');
             contentSpan.textContent = messageObj.content;
-            messageDiv.appendChild(contentSpan);
+            bubbleDiv.appendChild(contentSpan);
+
             const timeSpan = document.createElement('time');
             const date = messageObj.timestamp ? new Date(messageObj.timestamp * 1000) : new Date();
             timeSpan.textContent = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            messageDiv.appendChild(timeSpan);
+            bubbleDiv.appendChild(timeSpan);
+
+            messageDiv.appendChild(iconDiv);
+            messageDiv.appendChild(bubbleDiv);
+
             chatMessagesDiv.appendChild(messageDiv);
             chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
         }
@@ -808,10 +1061,12 @@
             chatHistory.push(userMessageObject);
             userInput.value = '';
             userInput.style.height = 'auto';
-            sendBtn.disabled = true;
+            
+            setSendButtonToLoading();
             typingIndicator.classList.remove('hidden');
             let container = document.getElementById('suggestion-buttons-container');
-            if (container) container.style.display = 'none';
+            if (container) container.innerHTML = ''; 
+
             try {
                 const response = await fetch(`${API_BASE_URL}/chat`, {
                     method: 'POST',
@@ -834,7 +1089,6 @@
                     };
                     displayMessage(mentorMessageObject);
                     chatHistory.push(mentorMessageObject);
-                    await fetchChats();
                 } else {
                     let errorMessage = "Unknown error.";
                     if (response.status === 422 && data && data.detail) {
@@ -854,7 +1108,7 @@
                 console.error('Error sending message:', error);
                 displayMessage({ role: 'assistant', content: 'Failed to get a response from the mentor. Please try again.', timestamp: Date.now() / 1000 });
             } finally {
-                sendBtn.disabled = false;
+                setSendButtonToSend();
                 typingIndicator.classList.add('hidden');
             }
         }
@@ -872,6 +1126,7 @@
         function showPromptButtons(prompts) {
             let container = document.getElementById('suggestion-buttons-container');
             container.innerHTML = '';
+            if(!prompts) return;
             prompts.forEach(prompt => {
                 const btn = document.createElement('button');
                 btn.textContent = prompt;
@@ -879,7 +1134,7 @@
                 btn.onclick = () => {
                     document.getElementById('user-input').value = prompt;
                     sendMessage();
-                    container.style.display = 'none';
+                    container.innerHTML = '';
                 };
                 container.appendChild(btn);
             });
@@ -911,7 +1166,7 @@
                 audio.onerror = (e) => {
                     console.error("Audio playback error event:", e);
                     buttonElement.disabled = false;
-                    buttonElement.textContent = '🔊';
+                    buttonElement.textContent = '�';
                     alert("Failed to play audio. Check console for details.");
                     URL.revokeObjectURL(audioUrl);
                 };
@@ -931,4 +1186,4 @@
         }
     </script>
 </body>
-</html>'
+</html>
