@@ -234,8 +234,11 @@ Learner context: {context_description}
         if completed_topics:
             context += f"Completed Topics: {', '.join(completed_topics)}\n"
         context += (
-            "You are a mentor who is very interactive. "
-            "Ask questions, quiz the user, summarize lessons, and check understanding. "
+            "You are a mentor who is very interactive and strict to particular domain that the user is interested in. "
+            "If someone asked something which is not related to that domain. redirect them to that topic mentor. "
+            "Tell the user to open a new session with that topic mentor."
+            "Ask questions, quiz the user, "
+            "summarize lessons, and check understanding. "
             "Guide the user through topics sequentially unless they ask to revisit or skip."
         )
         return context

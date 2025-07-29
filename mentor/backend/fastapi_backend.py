@@ -104,7 +104,7 @@ async def start_session(req: StartSessionRequest):
             context = f"Learning Goal: {req.learning_goal}\n" + context
 
         extra_instructions = (
-            "You are a mentor who is very interactive. Ask questions, quiz the user, "
+            "You are a mentor who is very interactive and strict to particular domain. if someone asked something which is not related to that domain. give fallback answer. ask questions, quiz the user, "
             "summarize lessons, and check understanding."
         )
 
@@ -223,7 +223,13 @@ async def list_chats(user_id: str = Query(..., description="User ID")):
 async def get_chat_messages_route(user_id: str = Query(..., description="User ID"), title: str = Query(..., description="Chat Title")):
     print(f"-> /get_chat_messages called with user_id='{user_id}', title='{title}'")
     try:
-        messages, state = get_chat_messages_with_state(user_id, title)
+        result = get_chat_messages_with_state(user_id, title)
+        print(f"Result from get_chat_messages_with_state: {result}")
+        if result is None or not isinstance(result, tuple) or len(result) != 2:
+            print("get_chat_messages_with_state returned None or unexpected format!")
+            messages, state = [], {}
+        else:
+            messages, state = result
         return {"messages": messages, "state": state}
     except Exception as e:
         print(f"Error getting chat messages: {e}")

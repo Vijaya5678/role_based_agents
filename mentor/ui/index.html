@@ -641,28 +641,48 @@
                     list.appendChild(li);
                     return;
                 }
+                // Show most recent first
                 data.chats.sort((a, b) => {
-                    const dateA = new Date(a[2] * 1000 || 0);
-                    const dateB = new Date(b[2] * 1000 || 0);
+                    const dateA = new Date(a.created_at || a[2] || 0);
+                    const dateB = new Date(b.created_at || b[2] || 0);
                     return dateB - dateA;
                 });
                 data.chats.forEach(chat => {
-                    const chatId = chat[0];
-                    const chatTitlePreview = chat[1];
-                    const chatTimestamp = chat[2];
+                    const chatId = chat.id || chat[0];
+                    const chatTitle = chat.title || chat[1];
+                    const chatCreatedAt = chat.created_at || chat[2];
+
                     const li = document.createElement("li");
-                    li.title = chatTitlePreview || "No Title";
-                    li.onclick = () => loadChat(chatTitlePreview);
+                    li.title = chatTitle;
+                    li.onclick = () => loadChat(chatTitle);
+
                     const titleDiv = document.createElement("div");
                     titleDiv.className = "session-title";
-                    titleDiv.textContent = chatTitlePreview || "Untitled Session";
+                    // Show a more readable title (replace underscores with spaces, remove timestamp/uuid)
+                    titleDiv.textContent = chatTitle.replace(/_\d{8,}_\w{4}$/, '').replace(/_/g, ' ');
+
                     const metaDiv = document.createElement("div");
                     metaDiv.className = "session-meta";
-                    const dt = chatTimestamp ? new Date(chatTimestamp * 1000) : null;
+                    const dt = chatCreatedAt ? new Date(chatCreatedAt) : null;
                     metaDiv.textContent = dt ? dt.toLocaleString() : "No Date";
+
                     const snippetDiv = document.createElement("div");
                     snippetDiv.className = "session-snippet";
-                    snippetDiv.textContent = chatTitlePreview || "No preview available.";
+                    snippetDiv.textContent = ""; // We'll fetch the preview below
+
+                    // Fetch the first message for this chat for preview
+                    fetch(`${API_BASE_URL}/get_chat_messages?user_id=${encodeURIComponent(userId)}&title=${encodeURIComponent(chatTitle)}`)
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.messages && data.messages.length > 0) {
+                                // Find the first assistant message
+                                const firstAssistant = data.messages.find(m => m.role === "assistant");
+                                if (firstAssistant) {
+                                    snippetDiv.textContent = firstAssistant.content.split('\n')[0].slice(0, 60) + "...";
+                                }
+                            }
+                        });
+
                     li.appendChild(titleDiv);
                     li.appendChild(metaDiv);
                     li.appendChild(snippetDiv);
@@ -793,15 +813,14 @@
             let container = document.getElementById('suggestion-buttons-container');
             if (container) container.style.display = 'none';
             try {
-                // FIX: send only [role, content] for each message
                 const response = await fetch(`${API_BASE_URL}/chat`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         user_id: userId,
                         chat_title: currentChatTitle,
-                        chat_history: chatHistory // <-- SEND AS ARRAY OF OBJECTS
-        })
+                        chat_history: chatHistory
+                    })
                 });
                 const data = await response.json();
                 if (response.ok) {
@@ -912,4 +931,4 @@
         }
     </script>
 </body>
-</html>
+</html>'
