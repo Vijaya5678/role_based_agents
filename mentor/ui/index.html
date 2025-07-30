@@ -42,8 +42,8 @@
         }
 
         .header-title-container .logo {
-             width: 40px;
-             height: 40px;
+            width: 40px;
+            height: 40px;
         }
 
         header h1 {
@@ -384,8 +384,8 @@
             flex-shrink: 0;
         }
         #send-btn:hover:not(:disabled) {
-             box-shadow: 0 4px 15px rgba(102, 126, 234, 0.5);
-             transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.5);
+            transform: translateY(-1px);
         }
         #send-btn:disabled {
             background: #b3b9e8;
@@ -450,7 +450,7 @@
             max-width: 500px;
             width: 100%;
         }
-         .setup h2 {
+        .setup h2 {
             color: #4a5568;
             margin-bottom: 30px;
             font-size: 1.8rem;
@@ -541,14 +541,14 @@
         }
 
         .suggestion-btn {
-             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-             color: #ffffff;
-             border-radius: 20px;
-             padding: 8px 16px;
-             cursor: pointer;
-             font-size: 0.95rem;
-             border:transparent;
-             transition: background-color 0.3s ease;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #ffffff;
+            border-radius: 10px;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            border:transparent;
+            transition: background-color 0.3s ease;
         }
         .suggestion-btn:hover {
             background-color: #cbd5e0;
@@ -576,6 +576,7 @@
                 <path fill="white" d="M50 20 L 30 35 L 50 50 L 70 35 L 50 20 Z M 50 55 L 30 70 L 50 85 L 70 70 L 50 55 Z"/>
             </svg>
             <h1>Mentora</h1>
+            <p>Learn, Grow, and Achieve</p>
         </div>
         <div id="logged-in-user-container" class="hidden">
             <span>Logged in as: </span>
@@ -659,7 +660,7 @@
                 <div class="input-box">
                     <textarea id="user-input" placeholder="Ask your Mentora..." rows="1"></textarea>
                     <button id="send-btn" onclick="sendMessage()">
-                        </button>
+                    </button>
                 </div>
             </div>
         </div>
@@ -691,7 +692,7 @@
         const selectedSkillsHiddenInput = document.getElementById('selected-skills-hidden-input');
         const loggedInUserContainer = document.getElementById('logged-in-user-container');
         let currentSelectedSkills = new Set();
-        const API_BASE_URL = 'http://127.0.0.1:8086';
+        const API_BASE_URL = 'http://127.0.0.1:8084';
         
         // --- Initialize Markdown Converter ---
         const converter = new showdown.Converter();
@@ -1005,9 +1006,12 @@
                 };
                 chatHistory = [introMessage];
                 displayMessage(introMessage);
-                if (data.topics && data.topics.length > 0) {
-                    fetchAndShowTopicPrompts(data.topics[0], userId);
+                
+                // MODIFICATION: Show suggestions from the start_session response
+                if (data.suggestions && data.suggestions.length > 0) {
+                    showPromptButtons(data.suggestions);
                 }
+                
                 await fetchChats();
             } catch (e) {
                 console.error("Error starting session:", e);
@@ -1041,12 +1045,10 @@
             const bubbleDiv = document.createElement('div');
             bubbleDiv.className = 'message-bubble';
 
-            // Convert markdown to HTML before rendering
             const htmlContent = converter.makeHtml(messageObj.content);
             const contentDiv = document.createElement('div');
             contentDiv.innerHTML = htmlContent;
             
-            // Add styling to make the use case stand out
             contentDiv.querySelectorAll('em').forEach(el => {
                 el.style.color = '#555';
                 el.style.display = 'block';
@@ -1072,14 +1074,11 @@
             const userInput = document.getElementById('user-input');
             const messageText = userInput.value.trim();
             if (messageText === '') return;
-            if (!userId) {
-                alert("Please login first.");
+            if (!userId || !currentChatTitle) {
+                alert("Please start or load a session first.");
                 return;
             }
-            if (!currentChatTitle) {
-                alert("Please start a new session or load a previous one first.");
-                return;
-            }
+
             const userMessageObject = {
                 role: "user",
                 content: messageText,
@@ -1092,8 +1091,8 @@
             
             setSendButtonToLoading();
             typingIndicator.classList.remove('hidden');
-            let container = document.getElementById('suggestion-buttons-container');
-            if (container) container.innerHTML = ''; 
+            // MODIFICATION: Clear previous suggestions immediately
+            document.getElementById('suggestion-buttons-container').innerHTML = ''; 
 
             try {
                 const response = await fetch(`${API_BASE_URL}/chat`, {
@@ -1107,29 +1106,21 @@
                 });
                 const data = await response.json();
                 if (response.ok) {
-                    const mentorResponse = data.reply;
                     const mentorMessageObject = {
                         role: "assistant",
-                        content: mentorResponse,
+                        content: data.reply,
                         timestamp: Date.now() / 1000,
-                        isIntro: false,
-                        isInitialIntro: false
                     };
                     displayMessage(mentorMessageObject);
                     chatHistory.push(mentorMessageObject);
-                } else {
-                    let errorMessage = "Unknown error.";
-                    if (response.status === 422 && data && data.detail) {
-                        errorMessage = Array.isArray(data.detail) ?
-                                     data.detail.map(err => `${err.loc.join('.')}: ${err.msg}`).join('; ') :
-                                     data.detail;
-                    } else if (data && data.detail) {
-                        errorMessage = data.detail;
-                    } else if (data && data.message) {
-                        errorMessage = data.message;
-                    } else {
-                        errorMessage = `Server responded with status ${response.status}.`;
+                    
+                    // MODIFICATION: Always check for and show new suggestions
+                    if (data.suggestions && Array.isArray(data.suggestions) && data.suggestions.length > 0) {
+                        showPromptButtons(data.suggestions);
                     }
+
+                } else {
+                    let errorMessage = data.detail || `Server responded with status ${response.status}.`;
                     displayMessage({ role: 'assistant', content: `Error: ${errorMessage}`, timestamp: Date.now() / 1000 });
                 }
             } catch (error) {
@@ -1141,16 +1132,7 @@
             }
         }
 
-        async function fetchAndShowTopicPrompts(topic, userId) {
-            const res = await fetch(`${API_BASE_URL}/get_topic_prompts`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ topic: topic, user_id: userId })
-            });
-            const data = await res.json();
-            showPromptButtons(data.prompts);
-        }
-
+        // MODIFICATION: This function now just displays buttons, it doesn't fetch them.
         function showPromptButtons(prompts) {
             let container = document.getElementById('suggestion-buttons-container');
             container.innerHTML = '';

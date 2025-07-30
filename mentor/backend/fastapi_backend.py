@@ -6,12 +6,14 @@ import uuid
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
+# Adjusting system path to locate necessary modules
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'core')))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'shared', 'storage')))
 
+# Importing custom modules for database operations and the core engine
 from shared.storage.handle_user import validate_login
 from shared.storage.handle_mentor_chat_history import (
     save_chat,
@@ -23,23 +25,30 @@ from shared.storage.handle_mentor_chat_history import (
 )
 from mentor.core.engine.mentor_engine import MentorEngine
 
+# Initialize the FastAPI application
 app = FastAPI()
 
+# --- Startup Event ---
 @app.on_event("startup")
 async def startup_event():
+    """Initializes the database when the application starts."""
     init_db()
     print("Database initialized.")
 
+# --- CORS Middleware ---
+# Allows cross-origin requests, essential for web frontends
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # Allows all origins
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],  # Allows all methods (GET, POST, etc.)
+    allow_headers=["*"],  # Allows all headers
 )
 
+# Instantiate the core mentor engine
 engine = MentorEngine()
 
+# --- Pydantic Models for Request Bodies ---
 class LoginRequest(BaseModel):
     user_id: str
     password: str
@@ -66,12 +75,16 @@ class TopicPromptRequest(BaseModel):
     topic: str
     user_id: Optional[str] = None
 
+# --- API Endpoints ---
+
 @app.get("/")
 async def read_root():
+    """Root endpoint to check if the API is running."""
     return {"message": "Mentor Me API is running!"}
 
 @app.post("/login")
 async def login(req: LoginRequest):
+    """Handles user login and validation."""
     print(f"-> /login called with user_id={req.user_id}")
     try:
         valid = validate_login(req.user_id, req.password)
@@ -84,8 +97,10 @@ async def login(req: LoginRequest):
 
 @app.post("/start_session")
 async def start_session(req: StartSessionRequest):
+    """Starts a new learning session for a user."""
     print(f"-> Starting session for user: {req.user_id}")
     try:
+        # Save user preferences for the session
         save_user_preferences(
             user_id=req.user_id,
             learning_goal=req.learning_goal,
@@ -95,6 +110,7 @@ async def start_session(req: StartSessionRequest):
         )
         print(f"Saved general preferences for user {req.user_id}")
 
+        # Build context for the mentor engine
         context = (
             f"Skills/Interests: {', '.join(req.skills)}\n"
             f"Difficulty: {req.difficulty}\n"
@@ -108,12 +124,15 @@ async def start_session(req: StartSessionRequest):
             "summarize lessons, and check understanding."
         )
 
+        # Generate introductory message and topics from the engine
         intro, topics, suggestions = await engine.generate_intro_and_topics(
             context_description=context,
             extra_instructions=extra_instructions
         )
 
         initial_current_topic = topics[0] if topics else None
+        
+        # Create a unique session title
         base_title_part = req.learning_goal or (req.skills[0] if req.skills else "New Session")
         sanitized_base_title = "".join(c for c in base_title_part if c.isalnum() or c == ' ').strip().replace(' ', '_')
         if not sanitized_base_title:
@@ -123,6 +142,7 @@ async def start_session(req: StartSessionRequest):
         mentor_message_content = intro + "\n\nFeel free to ask questions anytime. Are you ready to begin?"
         mentor_message_content = mentor_message_content.replace("🔊", "").strip()
 
+        # Create the initial message for the chat history
         initial_chat_history_entry = ChatMessage(
             role="assistant",
             content=mentor_message_content,
@@ -130,6 +150,7 @@ async def start_session(req: StartSessionRequest):
             audio_url=None
         )
 
+        # Save the new chat session to the database
         save_chat(
             user_id=req.user_id,
             title=session_title,
@@ -140,6 +161,7 @@ async def start_session(req: StartSessionRequest):
         )
 
         print(f"Session started successfully with title: {session_title}")
+        # Return all necessary information to the frontend
         return {
             "intro_and_topics": mentor_message_content,
             "title": session_title,
@@ -155,8 +177,10 @@ async def start_session(req: StartSessionRequest):
 
 @app.post("/chat")
 async def chat(req: ChatRequest):
+    """Handles an ongoing chat conversation."""
     print(f"-> /chat called by user: {req.user_id} for chat: '{req.chat_title}'")
     try:
+        # Retrieve current chat state from the database
         result = get_chat_messages_with_state(req.user_id, req.chat_title)
         if result is None or not isinstance(result, tuple) or len(result) != 2:
             print("get_chat_messages_with_state returned None or unexpected format!")
@@ -164,6 +188,7 @@ async def chat(req: ChatRequest):
         else:
             chat_messages, state = result
 
+        # Extract session state and user preferences
         mentor_topics = state.get("mentor_topics", [])
         current_topic = state.get("current_topic")
         completed_topics = state.get("completed_topics", [])
@@ -173,9 +198,11 @@ async def chat(req: ChatRequest):
         difficulty = prefs.get("difficulty", "medium")
         role = prefs.get("role", "student")
 
-        reply = await engine.chat(
+        # Pass all necessary context, including chat_title, to the engine
+        reply, suggestions = await engine.chat(
             chat_history=[msg.dict() for msg in req.chat_history],
             user_id=req.user_id,
+            chat_title=req.chat_title,
             learning_goal=learning_goal,
             skills=skills,
             difficulty=difficulty,
@@ -185,6 +212,7 @@ async def chat(req: ChatRequest):
             completed_topics=completed_topics
         )
 
+        # Create the new assistant message object
         mentor_message = ChatMessage(
             role="assistant",
             content=reply,
@@ -192,6 +220,7 @@ async def chat(req: ChatRequest):
             audio_url=None
         )
 
+        # Update and save the chat history
         updated_history = req.chat_history + [mentor_message]
         save_chat(
             user_id=req.user_id,
@@ -202,7 +231,8 @@ async def chat(req: ChatRequest):
             completed_topics=completed_topics
         )
 
-        return {"reply": reply}
+        # Return both reply and suggestions to the frontend
+        return {"reply": reply, "suggestions": suggestions}
     except HTTPException:
         raise
     except Exception as e:
@@ -211,6 +241,7 @@ async def chat(req: ChatRequest):
 
 @app.get("/get_chats")
 async def list_chats(user_id: str = Query(..., description="User ID")):
+    """Retrieves a list of all past chat sessions for a user."""
     print(f"-> /get_chats called for user_id='{user_id}'")
     try:
         chats = get_chats(user_id)
@@ -221,6 +252,7 @@ async def list_chats(user_id: str = Query(..., description="User ID")):
 
 @app.get("/get_chat_messages")
 async def get_chat_messages_route(user_id: str = Query(..., description="User ID"), title: str = Query(..., description="Chat Title")):
+    """Retrieves all messages and state for a specific chat session."""
     print(f"-> /get_chat_messages called with user_id='{user_id}', title='{title}'")
     try:
         result = get_chat_messages_with_state(user_id, title)
@@ -236,9 +268,7 @@ async def get_chat_messages_route(user_id: str = Query(..., description="User ID
 
 @app.post("/get_topic_prompts")
 async def get_topic_prompts(req: TopicPromptRequest):
-    """
-    Given a topic, return 4 suggested prompts for the UI.
-    """
+    """Generates suggested user prompts for a given topic."""
     try:
         prefs = get_user_preferences(req.user_id) if req.user_id else {}
         context = ""
@@ -247,6 +277,7 @@ async def get_topic_prompts(req: TopicPromptRequest):
         prompts = await engine.generate_topic_prompts(req.topic, context_description=context)
         return {"prompts": prompts}
     except Exception as e:
+        # Fallback prompts in case of an error
         return {"prompts": [
             f"What are the basics of {req.topic}?",
             f"Can you give me a real-world example of {req.topic}?",

@@ -44,6 +44,15 @@ dummy_users = [
         "unit": "CloudOps",
         "location": "Bangalore"
     },
+    {
+        "user_id": "shivam03",
+        "name": "Shivam",
+        "password": "shivam@123",
+        "email": "shivam@hcl.com",
+        "firm": "HCL",
+        "unit": "GENAI",
+        "location": "Bangalore"
+    },
     # add other users similarly...
 ]
 
