@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Mentora</title>
+    <title>Mentora - Learn, Grow, and Achieve</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -240,7 +241,7 @@
             position: relative;
             word-wrap: break-word;
             white-space: pre-wrap;
-            line-height: 1.5;
+            line-height: 1.0;
         }
 
         .message.user .message-bubble {
@@ -253,6 +254,22 @@
             background-color: #b4caf652;
             color: #343a40;
             border-radius: 18px 18px 18px 4px;
+        }
+        
+        /* FIX: Reduce spacing for markdown lists */
+        .message.assistant .message-bubble ul {
+            padding-left: 20px;
+            margin-top: 5px;
+            margin-bottom: 5px;
+        }
+        .message.assistant .message-bubble li {
+            margin-bottom: 2px;
+        }
+        .message.assistant .message-bubble p {
+            margin-bottom: 0.5em;
+        }
+        .message.assistant .message-bubble p:last-child {
+            margin-bottom: 0;
         }
         
         .mentor-icon::before {
@@ -394,10 +411,6 @@
         }
 
 
-        /* .btn-secondary {
-            background: #e2e8f0;
-            color: #4a5568;
-        } */
         .btn-secondary {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: #fff;
@@ -417,7 +430,7 @@
         }
         .login h2 {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 15px;
             color: #4a5568;
             font-size: 1.8rem;
         }
@@ -551,8 +564,7 @@
 <body>
 
     <header>
-        <div style="width: 200px;"></div> <!-- Spacer -->
-        <div class="header-title-container">
+        <div style="width: 200px;"></div> <div class="header-title-container">
             <svg class="logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
                 <defs>
                     <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -573,6 +585,9 @@
 
     <div class="login" id="login-section">
         <h2>Welcome Back!</h2>
+        <p style="text-align: center; color: #6c757d; margin-bottom: 25px; font-size: 1rem;">
+            Your personalized AI-powered mentor to help you master new skills. Learn, Grow, and Achieve with guided sessions tailored to your needs.
+        </p>
         <div class="form-group">
             <label for="userId">User ID:</label>
             <input type="text" id="userId" />
@@ -605,7 +620,7 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="difficulty"></label>Choose Your Level:</label>
+                        <label for="difficulty">Choose Your Level:</label>
                         <select id="difficulty">
                             <option value="Beginner">Beginner</option>
                             <option value="Intermediate">Intermediate</option>
@@ -640,12 +655,11 @@
             <div class="chat-area hidden" id="chat-messages-area">
                 <div class="messages" id="chat-messages"></div>
                 <div id="suggestion-buttons-container"></div>
-                <div id="typing-indicator" class="hidden">Mentor is typing...</div>
+                <div id="typing-indicator" class="hidden">Mentora is thinking...</div>
                 <div class="input-box">
-                    <textarea id="user-input" placeholder="Ask your mentor..." rows="1"></textarea>
+                    <textarea id="user-input" placeholder="Ask your Mentora..." rows="1"></textarea>
                     <button id="send-btn" onclick="sendMessage()">
-                         <!-- SVG icon will be injected by JS -->
-                    </button>
+                        </button>
                 </div>
             </div>
         </div>
@@ -679,6 +693,9 @@
         let currentSelectedSkills = new Set();
         const API_BASE_URL = 'http://127.0.0.1:8086';
         
+        // --- Initialize Markdown Converter ---
+        const converter = new showdown.Converter();
+
         // --- SVG Icons ---
         const sendIconSVG = `<svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>`;
         const loadingSpinnerHTML = `<div class="loading-spinner"></div>`;
@@ -1024,9 +1041,20 @@
             const bubbleDiv = document.createElement('div');
             bubbleDiv.className = 'message-bubble';
 
-            const contentSpan = document.createElement('span');
-            contentSpan.textContent = messageObj.content;
-            bubbleDiv.appendChild(contentSpan);
+            // Convert markdown to HTML before rendering
+            const htmlContent = converter.makeHtml(messageObj.content);
+            const contentDiv = document.createElement('div');
+            contentDiv.innerHTML = htmlContent;
+            
+            // Add styling to make the use case stand out
+            contentDiv.querySelectorAll('em').forEach(el => {
+                el.style.color = '#555';
+                el.style.display = 'block';
+                el.style.fontSize = '0.9em';
+                el.style.marginTop = '4px';
+            });
+            
+            bubbleDiv.appendChild(contentDiv);
 
             const timeSpan = document.createElement('time');
             const date = messageObj.timestamp ? new Date(messageObj.timestamp * 1000) : new Date();
@@ -1093,8 +1121,8 @@
                     let errorMessage = "Unknown error.";
                     if (response.status === 422 && data && data.detail) {
                         errorMessage = Array.isArray(data.detail) ?
-                                       data.detail.map(err => `${err.loc.join('.')}: ${err.msg}`).join('; ') :
-                                       data.detail;
+                                     data.detail.map(err => `${err.loc.join('.')}: ${err.msg}`).join('; ') :
+                                     data.detail;
                     } else if (data && data.detail) {
                         errorMessage = data.detail;
                     } else if (data && data.message) {
@@ -1141,49 +1169,6 @@
             container.style.display = prompts.length > 0 ? 'flex' : 'none';
         }
 
-        async function playMentorAudio(text, buttonElement) {
-            buttonElement.disabled = true;
-            buttonElement.textContent = '...';
-            try {
-                const encodedText = encodeURIComponent(text);
-                const audioRequestUrl = `${API_BASE_URL}/text_to_speech_direct?text=${encodedText}`;
-                const res = await fetch(audioRequestUrl, { method: "GET" });
-                if (!res.ok) {
-                    const errorText = await res.text();
-                    throw new Error(`Failed to get audio: ${res.status} - ${errorText}`);
-                }
-                const audioBlob = await res.blob();
-                if (audioBlob.size === 0) {
-                    throw new Error("Received empty audio file from server.");
-                }
-                const audioUrl = URL.createObjectURL(audioBlob);
-                const audio = new Audio(audioUrl);
-                audio.onended = () => {
-                    buttonElement.disabled = false;
-                    buttonElement.textContent = '🔊';
-                    URL.revokeObjectURL(audioUrl);
-                };
-                audio.onerror = (e) => {
-                    console.error("Audio playback error event:", e);
-                    buttonElement.disabled = false;
-                    buttonElement.textContent = '�';
-                    alert("Failed to play audio. Check console for details.");
-                    URL.revokeObjectURL(audioUrl);
-                };
-                await audio.play().catch(playError => {
-                    console.error("audio.play() Promise rejected (likely autoplay policy):", playError);
-                    alert("Audio playback might be blocked by your browser's autoplay policy. Please try again or check browser settings.");
-                    buttonElement.disabled = false;
-                    buttonElement.textContent = '🔊';
-                    URL.revokeObjectURL(audioUrl);
-                });
-            } catch (error) {
-                console.error("Error in playMentorAudio catch block:", error);
-                alert("Could not play audio: " + error.message);
-                buttonElement.disabled = false;
-                buttonElement.textContent = '🔊';
-            }
-        }
     </script>
 </body>
 </html>

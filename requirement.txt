@@ -5,3 +5,4 @@ streamlit-audiorecorder
 uvicorn
 fastapi
 aiofiles
+guardrails-ai
