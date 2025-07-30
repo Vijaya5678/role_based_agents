@@ -6,3 +6,5 @@ uvicorn
 fastapi
 aiofiles
 guardrails-ai
+pyyaml
+

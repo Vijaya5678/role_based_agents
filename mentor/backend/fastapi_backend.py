@@ -224,7 +224,6 @@ async def get_chat_messages_route(user_id: str = Query(..., description="User ID
     print(f"-> /get_chat_messages called with user_id='{user_id}', title='{title}'")
     try:
         result = get_chat_messages_with_state(user_id, title)
-        print(f"Result from get_chat_messages_with_state: {result}")
         if result is None or not isinstance(result, tuple) or len(result) != 2:
             print("get_chat_messages_with_state returned None or unexpected format!")
             messages, state = [], {}
