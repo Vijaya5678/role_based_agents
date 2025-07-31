@@ -158,7 +158,7 @@ class MentorEngine:
         
         # Add the summary to the context if it exists
         if summary:
-            messages_for_api.append({"role": "system", "content": f"Here is a summary of the conversation so far:\n{summary}"})
+            messages_for_api.append({"role": "system", "content": f"Here is a summary of the conversation so far:\n{summary}. Since you are a mentor your goal is whatever mentor topics you have got you need to teach that to user. If user ask something else other than the 5 topics, but is of same domain then ans . Like if skill is python, user asks about pandas, it should teach but if someone says teach me java then say open new java mentor session. Do not say I won't teach, If user asking anything from that skill then ans,teach but remind the topics that we have to cover."})
 
         # Add the recent history
         messages_for_api.extend(recent_history)
@@ -175,7 +175,7 @@ class MentorEngine:
             return "I seem to be having trouble formatting my thoughts. Please try rephrasing your question.", []
         except Exception as e:
             print(f"Error in chat: {e}")
-            return "Sorry, I couldn't generate a response at this moment.", []
+            return "I'm sorry, I couldn't understand your question. Could you please rephrase it?", []
 
     def _build_system_context(
         self,

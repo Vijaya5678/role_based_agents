@@ -80,7 +80,7 @@ class TopicPromptRequest(BaseModel):
 @app.get("/")
 async def read_root():
     """Root endpoint to check if the API is running."""
-    return {"message": "Mentor Me API is running!"}
+    return {"message": "Mentora Me API is running!"}
 
 @app.post("/login")
 async def login(req: LoginRequest):
