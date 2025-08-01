@@ -1,6 +1,5 @@
 import os
 import sys
-import re
 import json
 import yaml
 from typing import Optional, Tuple, List, Dict, Any
@@ -24,8 +23,8 @@ class MentorEngine:
         self.guard = Guard().use_many(
             DetectPII(pii_entities=["EMAIL_ADDRESS", "PHONE_NUMBER", "SSN", "CREDIT_CARD", "IP_ADDRESS"], on_fail="fix")
         )
-        self.role_context = self._load_yaml("mentor_roles.yaml")
-        self.prompt_templates = self._load_yaml("mentor_prompts.yaml")
+        # Load all prompts from a single configuration file
+        self.prompts = self._load_yaml("prompts.yaml")
         # State to hold summaries for ongoing conversations
         self.conversation_summaries = {}
 
@@ -36,15 +35,18 @@ class MentorEngine:
             return yaml.safe_load(f)
 
     def _validate_and_sanitize_input(self, input_text: str) -> str:
+        # Placeholder for future input validation logic
         return input_text
 
     def _sanitize_output(self, output_text: str) -> str:
+        """Sanitizes output to remove PII using Guardrails."""
         try:
             if not isinstance(output_text, str):
                 return output_text
             validated_output = self.guard.parse(output_text)
             return validated_output.validated_output
         except Exception:
+            # If sanitization fails, return the original text to avoid breaking the flow
             return output_text
 
     async def _get_llm_completion(
@@ -67,39 +69,25 @@ class MentorEngine:
         response = await self.llm_client.chat.completions.create(**completion_params)
         return self._sanitize_output(response.choices[0].message.content.strip())
 
-    # NEW METHOD: To summarize the conversation history
     async def _get_conversation_summary(self, chat_title: str, chat_history: List[Dict[str, Any]]) -> str:
-        """
-        Creates and updates a summary of the conversation to keep context size manageable.
-        """
-        # Define how many messages to keep in the sliding window
-        SUMMARY_THRESHOLD = 10 
-        
-        # Only summarize if the history is long enough
+        """Creates and updates a summary of the conversation to keep context size manageable."""
+        SUMMARY_THRESHOLD = 10
         if len(chat_history) < SUMMARY_THRESHOLD:
             return self.conversation_summaries.get(chat_title, "")
 
-        # Determine which messages need to be summarized
-        # We summarize all but the last few messages to keep recent context sharp
         messages_to_summarize = chat_history[:-5]
-        
-        summary_prompt = (
-            "Concisely summarize the key points, user goals, and progress in this conversation. "
-            "Focus on information that would be essential for a mentor to remember to continue the conversation effectively."
-        )
+        summary_prompt = self.prompts["tasks"]["summarize_conversation"]
         
         summary_messages = [{"role": "system", "content": summary_prompt}]
         summary_messages.extend(messages_to_summarize)
 
         try:
-            # Use a smaller max_tokens for the summary itself
             summary = await self._get_llm_completion(summary_messages, temperature=0.3, max_tokens=250)
             self.conversation_summaries[chat_title] = summary
             print(f"Generated new summary for chat '{chat_title}': {summary}")
             return summary
         except Exception as e:
             print(f"Error generating conversation summary: {e}")
-            # Return the last known summary if a new one fails
             return self.conversation_summaries.get(chat_title, "")
 
     async def generate_intro_and_topics(
@@ -108,14 +96,21 @@ class MentorEngine:
         extra_instructions: Optional[str] = None,
         role: Optional[str] = None
     ) -> Tuple[str, List[str], List[str]]:
-        # This method remains unchanged as it starts a new conversation
         context_description = self._validate_and_sanitize_input(context_description)
         extra_instructions = self._validate_and_sanitize_input(extra_instructions) if extra_instructions else ""
-        default_behavior = self.role_context.get("default_instructions", "")
-        role_prompt = self.role_context.get("roles", {}).get(role, "")
-        prompt_template = self.prompt_templates.get("generate_intro_and_topics", "")
-        prompt_content = prompt_template.format(extra_instructions=extra_instructions, default_behavior=default_behavior, role_prompt=role_prompt, context_description=context_description)
+        
+        default_behavior = self.prompts["default_instructions"]
+        role_prompt = self.prompts["roles"].get(role, self.prompts["roles"]["default"])
+        prompt_template = self.prompts["tasks"]["generate_intro_and_topics"]
+
+        prompt_content = prompt_template.format(
+            extra_instructions=extra_instructions,
+            default_behavior=default_behavior,
+            role_prompt=role_prompt,
+            context_description=context_description
+        )
         messages = [{"role": "user", "content": prompt_content}]
+        
         try:
             llm_raw_response = await self._get_llm_completion(messages, temperature=0.5, max_tokens=800, json_mode=True)
             parsed = json.loads(llm_raw_response)
@@ -123,7 +118,9 @@ class MentorEngine:
             topics = [self._sanitize_output(t) for t in parsed.get("topics", [])]
             question = self._sanitize_output(parsed.get("concluding_question", "Shall we start?"))
             suggestions = [self._sanitize_output(s) for s in parsed.get("suggestions", [])]
-            return (f"{greeting}\n\nHere are the topics we'll explore:\n- " + "\n- ".join(topics) + f"\n\n{question}", topics, suggestions)
+            
+            intro_message = f"{greeting}\n\nHere are the topics we'll explore:\n- " + "\n- ".join(topics) + f"\n\n{question}"
+            return (intro_message, topics, suggestions)
         except Exception as e:
             print(f"Error in generate_intro_and_topics: {e}")
             fallback_intro = "Hello! I'm your mentor, ready to guide you.\n\nHere are some topics:\n- Introduction\n- Core Concepts\n- Advanced Topics\n\nShall we start?"
@@ -133,7 +130,7 @@ class MentorEngine:
         self,
         chat_history: List[Dict[str, Any]],
         user_id: str,
-        chat_title: str, # Added chat_title to manage summaries
+        chat_title: str,
         learning_goal: Optional[str],
         skills: List[str],
         difficulty: str,
@@ -142,52 +139,37 @@ class MentorEngine:
         current_topic: Optional[str] = None,
         completed_topics: Optional[List[str]] = None,
     ) -> Tuple[str, List[str]]:
-        """Handles a chat turn using summarization to manage context."""
         if not chat_history:
             return "Please start the conversation with a message.", []
 
-        # MODIFICATION: Get summary and recent messages instead of full history
         summary = await self._get_conversation_summary(chat_title, chat_history)
-        
-        # Keep the last 6 messages for the "sliding window" of recent context
         recent_history = chat_history[-6:]
 
-        # Build the context for the API call
         system_prompt = self._build_system_context(learning_goal, skills, difficulty, role, mentor_topics, current_topic, completed_topics)
         messages_for_api = [{"role": "system", "content": system_prompt}]
         
-        # Add the summary to the context if it exists
         if summary:
-            messages_for_api.append({"role": "system", "content": f"Here is a summary of the conversation so far:\n{summary}. Since you are a mentor your goal is whatever mentor topics you have got you need to teach that to user. If user ask something else other than the 5 topics, but is of same domain then ans . Like if skill is python, user asks about pandas, it should teach but if someone says teach me java then say open new java mentor session. Do not say I won't teach, If user asking anything from that skill then ans,teach but remind the topics that we have to cover."})
+            user_prompt_wrapper = self.prompts["tasks"]["chat"]["user_prompt_wrapper"]
+            messages_for_api.append({"role": "system", "content": user_prompt_wrapper.format(summary=summary)})
 
-        # Add the recent history
         messages_for_api.extend(recent_history)
 
         try:
-            # The token limit can now be lower as the context is managed
             llm_raw_response = await self._get_llm_completion(messages_for_api, temperature=0.7, max_tokens=1500, json_mode=True)
             parsed = json.loads(llm_raw_response)
             reply = self._sanitize_output(parsed.get("reply", "I'm sorry, I couldn't form a proper reply."))
             suggestions = [self._sanitize_output(s) for s in parsed.get("suggestions", [])]
             return reply, suggestions
         except json.JSONDecodeError as e:
-            print(f"CRITICAL: LLM failed to produce valid JSON even in json_mode. Error: {e}. Response: {llm_raw_response}")
+            print(f"CRITICAL: LLM failed to produce valid JSON. Error: {e}. Response: {llm_raw_response}")
             return "I seem to be having trouble formatting my thoughts. Please try rephrasing your question.", []
         except Exception as e:
             print(f"Error in chat: {e}")
             return "I'm sorry, I couldn't understand your question. Could you please rephrase it?", []
 
     def _build_system_context(
-        self,
-        learning_goal,
-        skills,
-        difficulty,
-        role,
-        mentor_topics,
-        current_topic,
-        completed_topics
+        self, learning_goal, skills, difficulty, role, mentor_topics, current_topic, completed_topics
     ) -> str:
-        # This method remains unchanged
         context_lines = [f"Role: {role}"]
         if learning_goal: context_lines.append(f"Learning Goal: {learning_goal}")
         if skills: context_lines.append(f"Skills: {', '.join(skills)}")
@@ -195,20 +177,18 @@ class MentorEngine:
         if mentor_topics: context_lines.append(f"Topics: {', '.join(mentor_topics)}")
         if current_topic: context_lines.append(f"Current Topic: {current_topic}")
         if completed_topics: context_lines.append(f"Completed Topics: {', '.join(completed_topics)}")
-        role_instruction = self.role_context["roles"].get(role, "")
-        default_instruction = self.role_context.get("default_instructions", "")
-        json_output_instruction = (
-            "\n\n--- OUTPUT FORMAT ---\n"
-            "You MUST provide your response as a single JSON object. This object must contain two keys:\n"
-            '1. "reply": (string) Your main conversational response to the user. Use Markdown for formatting.\n'
-            '2. "suggestions": (list of strings) A list of 3-4 short, relevant follow-up questions or prompts to guide the user.\n\n'
-            "Example:\n"
-            '{\n'
-            '  "reply": "This is the main answer to the user\'s question.",\n'
-            '  "suggestions": ["Tell me more.", "Give me an example.", "What\'s next?"]\n'
-            '}'
+        
+        role_instruction = self.prompts["roles"].get(role, self.prompts["roles"]["default"])
+        default_instruction = self.prompts["default_instructions"]
+        json_output_instruction = self.prompts["shared_components"]["json_output_format"]
+        system_prompt_template = self.prompts["tasks"]["chat"]["system_prompt"]
+
+        return system_prompt_template.format(
+            context_summary="\n".join(context_lines),
+            role_instruction=role_instruction,
+            default_instruction=default_instruction,
+            json_output_instruction=json_output_instruction
         )
-        return "\n".join(context_lines) + "\n" + role_instruction + "\n" + default_instruction + json_output_instruction
     
     async def generate_topic_prompts(
         self,
@@ -216,13 +196,19 @@ class MentorEngine:
         context_description: str = "",
         role: Optional[str] = None
     ) -> list:
-        # This method remains unchanged
         topic = self._validate_and_sanitize_input(topic)
         context_description = self._validate_and_sanitize_input(context_description)
-        role_prompt = self.role_context["roles"].get(role, "") if role else ""
-        prompt_template = self.prompt_templates.get("generate_topic_prompts", "")
-        prompt_content = prompt_template.format(topic=topic, role_prompt=role_prompt, context_description=context_description)
+        
+        role_prompt = self.prompts["roles"].get(role, self.prompts["roles"]["default"])
+        prompt_template = self.prompts["tasks"]["generate_topic_prompts"]
+        
+        prompt_content = prompt_template.format(
+            topic=topic,
+            role_prompt=role_prompt,
+            context_description=context_description
+        )
         messages = [{"role": "user", "content": prompt_content}]
+        
         try:
             llm_response = await self._get_llm_completion(messages, temperature=0.5, max_tokens=500, json_mode=True)
             prompts = json.loads(llm_response)
@@ -230,4 +216,3 @@ class MentorEngine:
         except Exception as e:
             print(f"Error in generate_topic_prompts: {e}")
             return [f"What are the basics of {topic}?", f"Give me an example of {topic}", f"How to apply {topic}?", f"Common mistakes in {topic}?"]
-

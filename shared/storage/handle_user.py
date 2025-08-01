@@ -2,7 +2,9 @@ import sqlite3
 from datetime import datetime
 import os
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "user_history.db")
+DATABASE_DIR = os.path.join(os.path.dirname(__file__), '..', '..', 'data')
+DATABASE_NAME = 'user_history.db'
+DB_PATH = os.path.join(DATABASE_DIR, DATABASE_NAME)
 conn = sqlite3.connect(DB_PATH, check_same_thread=False)
 c = conn.cursor()
 
