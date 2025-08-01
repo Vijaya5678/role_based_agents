@@ -64,7 +64,11 @@ def get_chats(user_id: str):
         cursor.execute("SELECT id, title, created_at FROM chats WHERE user_id = ?", (user_id,))
         return cursor.fetchall()
 
-def get_chat_messages_with_state(user_id: str, chat_title: str) -> Optional[Dict[str, Any]]:
+def get_chat_messages_with_state(user_id: str, chat_title: str) -> Optional[Tuple[List[Dict[str, Any]], Dict[str, Any]]]:
+    """
+    Retrieves chat messages and the mentor session state for a given user and chat title.
+    Returns a tuple of (messages, state) or None if not found.
+    """
     with _get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute('''
@@ -73,16 +77,25 @@ def get_chat_messages_with_state(user_id: str, chat_title: str) -> Optional[Dict
             WHERE user_id = ? AND title = ?
         ''', (user_id, chat_title))
         row = cursor.fetchone()
+
         if row:
+            # Parse the JSON string of messages into a list of dictionaries
+            messages = json.loads(row["messages_json"]) if row["messages_json"] else []
+            
+            # Prepare the state dictionary
             mentor_topics = json.loads(row["mentor_topics"]) if row["mentor_topics"] else []
             completed_topics = json.loads(row["completed_topics"]) if row["completed_topics"] else []
-            return {
-                "messages_json": row["messages_json"],
+            state = {
                 "mentor_topics": mentor_topics,
                 "current_topic": row["current_topic"],
                 "completed_topics": completed_topics
             }
-        return None
+            
+            # Return a tuple of (messages, state)
+            return messages, state
+            
+    # If no row is found, return None
+    return None
 
 def save_user_preferences(user_id: str, learning_goal: Optional[str], skills: List[str], difficulty: str, role: str):
     with _get_db_connection() as conn:

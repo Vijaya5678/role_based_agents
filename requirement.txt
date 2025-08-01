@@ -1,7 +1,7 @@
-crewai
 dotenv
-streamlit
-streamlit-audiorecorder
-uvicorn
 fastapi
 aiofiles
+guardrails-ai
+pyyaml
+openai
+
