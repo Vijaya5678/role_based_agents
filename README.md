@@ -1,19 +1,18 @@
 
-# AI Mentor Chatbot
+# AI Mentor Chatbot- Mentora
 
-This project is a **production-ready, role-based AI Mentor Chatbot** built with Streamlit. It enables users to log in, initiate learning sessions, and receive tailored guidance from an AI that adapts its mentoring style based on the user's professional role (e.g., Executive, Analyst).
+This project is a **production-ready, AI Mentor Chatbot** built with Html and FastAPI. It enables users to log in, initiate learning sessions, and receive tailored guidance from an AI that adapts its mentoring style based on the user's professional role (e.g., Executive, Technical).
 
 ---
 
 ## 🔧 Features
 
-- **🔐 Secure User Authentication**: Login required to access the chatbot.
-- **💬 Session Management**: Resume or start new learning sessions.
-- **👔 Role-Based AI Mentoring**: Custom mentoring style for each user role.
-- **📂 Centralized Prompt Management**: All prompts are stored in `prompts.yaml`.
-- **🎙️ Text & Audio Input**: Ask questions via text or voice transcription.
-- **🗣️ Text-to-Speech Output**: Mentor speaks the responses aloud.
-- **🏗️ Clean Architecture**: Modular, scalable, and production-ready codebase.
+- **Secure User Authentication**: Login required to access the chatbot.
+- **Session Management**: Resume or start new learning sessions.
+- **Role-Based AI Mentoring**: Custom mentoring style for each user role.
+- **Centralized Prompt Management**: All prompts are stored in `prompts.yaml`.
+- **Text-to-Speech Output**: Mentor speaks the responses aloud.
+- **Clean Architecture**: Modular, scalable, and production-ready codebase.
 
 ---
 
@@ -22,18 +21,25 @@ This project is a **production-ready, role-based AI Mentor Chatbot** built with 
 ```
 role_based_agents/
 ├── data/
-│   └── mentor.db           # Centralized database
+│   └── mentor_data.db  
+│   ___ user_history.db                  # Centralized database
 ├── mentor/
+│   ├── backend/
+│   │   └── fastapi_backend.py       # FastAPI backend
 │   ├── core/
-│   │   ├── engine/
-│   │   │   ├── connection.py     # Handles LLM connection
-│   │   │   ├── mentor_engine.py  # Core application logic
-│   │   │   └── prompts.yaml      # All LLM prompts
+│   │   └── engine/
+│   │       ├── mentor_engine.py     # Core application logic
+│   │       └── prompts.yaml         # All LLM prompts
+│   ├── shared/
 │   │   └── storage/
-│   │       └── database.py       # Handles all DB operations
+│   │       ├── create_user_data.py          # Setup user data
+│   │       ├── handle_mentor_chat_history.py # Chat history operations
+│   │       └── handle_user.py               # User authentication & management
 │   └── ui/
-│       └── main.py             # Streamlit user interface
-├── .env                      # Environment variables
+│       ├── index.html              # UI template in html
+│
+├── connection.py                  # LLM connection logic 
+├── .env                           # Environment variables
 ├── .gitignore
 ├── README.md
 └── requirements.txt
@@ -66,18 +72,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-You may also need to install `ffmpeg` for audio transcription:
 
-```bash
-# macOS
-brew install ffmpeg
-
-# Windows (with Chocolatey)
-choco install ffmpeg
-
-# Ubuntu/Debian
-sudo apt update && sudo apt install ffmpeg
-```
 
 ### 4. Configure Environment Variables
 
@@ -92,10 +87,10 @@ GPT4_DEPLOYMENT_NAME="your_deployment_name"
 
 ### 5. Initialize the Database
 
-The app will auto-create `mentor.db` in the `data/` directory on the first run. To enable login, add users to the `users` table using a DB browser or script. A test user is included in `database.py`:
+Run create_user_data.py to create `user_history.db` in the `data/` directory on the first run. To enable login, add users to the `users` table using a DB browser or script. A test user is included in `handle_user.py`:
 
 ```python
-test_user = {'username': 'testuser', 'password': 'password'}
+test_user = {'username': 'vijaya01', 'password': 'vijaya@123'}
 ```
 
 ---
@@ -103,7 +98,7 @@ test_user = {'username': 'testuser', 'password': 'password'}
 ## 🧠 How to Run the App
 
 ```bash
-streamlit run mentor/ui/main.py
+uvicorn fastapi_backend:app --reload --port 8084
 ```
 
 Visit the local URL in your browser to interact with the chatbot.
@@ -116,4 +111,4 @@ For issues, suggestions, or contributions, feel free to open an issue or a PR on
 
 ---
 
-© 2025 AI Mentor Team
+© 2025 HCLTech Mentora
