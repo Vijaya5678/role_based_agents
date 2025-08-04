@@ -93,7 +93,88 @@ async def login(req: LoginRequest):
         return {"success": True, "user_id": req.user_id}
     except Exception as e:
         print(f"Login error: {e}")
-        raise HTTPException(status_code=500, detail="Login failed")
+        raise HTTPException(status_code=404, detail="Login failed")
+
+# @app.post("/start_session")
+# async def start_session(req: StartSessionRequest):
+#     """Starts a new learning session for a user."""
+#     print(f"-> Starting session for user: {req.user_id}")
+#     try:
+#         # Save user preferences for the session
+#         save_user_preferences(
+#             user_id=req.user_id,
+#             learning_goal=req.learning_goal,
+#             skills=req.skills,
+#             difficulty=req.difficulty,
+#             role=req.role
+#         )
+#         print(f"Saved general preferences for user {req.user_id}")
+
+#         # Build context for the mentor engine
+#         context = (
+#             f"Skills/Interests: {', '.join(req.skills)}\n"
+#             f"Difficulty: {req.difficulty}\n"
+#             f"User Role: {req.role}"
+#         )
+#         if req.learning_goal:
+#             context = f"Learning Goal: {req.learning_goal}\n" + context
+
+#         extra_instructions = (
+#             "You are a mentor who is very interactive and strict to particular domain. if someone asked something which is not related to that domain. give fallback answer. ask questions, quiz the user, "
+#             "summarize lessons, and check understanding."
+#         )
+
+#         # Generate introductory message and topics from the engine
+#         intro, topics, suggestions = await engine.generate_intro_and_topics(
+#             context_description=context,
+#             extra_instructions=extra_instructions
+#         )
+
+#         initial_current_topic = topics[0] if topics else None
+        
+#         # Create a unique session title
+#         base_title_part = req.learning_goal or (req.skills[0] if req.skills else "New Session")
+#         sanitized_base_title = "".join(c for c in base_title_part if c.isalnum() or c == ' ').strip().replace(' ', '_')
+#         if not sanitized_base_title:
+#             sanitized_base_title = "Session"
+#         session_title = f"{sanitized_base_title}_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}_{str(uuid.uuid4())[:4]}"
+
+#         mentor_message_content = intro + "\n\nFeel free to ask questions anytime. Are you ready to begin?"
+#         mentor_message_content = mentor_message_content.replace("🔊", "").strip()
+
+#         # Create the initial message for the chat history
+#         initial_chat_history_entry = ChatMessage(
+#             role="assistant",
+#             content=mentor_message_content,
+#             timestamp=datetime.datetime.now().timestamp(),
+#             audio_url=None
+#         )
+
+#         # Save the new chat session to the database
+#         save_chat(
+#             user_id=req.user_id,
+#             title=session_title,
+#             messages_json=json.dumps([initial_chat_history_entry.dict()]),
+#             mentor_topics=topics,
+#             current_topic=initial_current_topic,
+#             completed_topics=[]
+#         )
+
+#         print(f"Session started successfully with title: {session_title}")
+#         # Return all necessary information to the frontend
+#         return {
+#             "intro_and_topics": mentor_message_content,
+#             "title": session_title,
+#             "topics": topics,
+#             "current_topic": initial_current_topic,
+#             "suggestions": suggestions
+#         }
+#     except Exception as e:
+#         print(f"X Error starting session: {e}")
+#         import traceback
+#         traceback.print_exc()
+#         raise HTTPException(status_code=500, detail=f"Could not start session: {str(e)}")
+
 
 @app.post("/start_session")
 async def start_session(req: StartSessionRequest):
@@ -124,10 +205,12 @@ async def start_session(req: StartSessionRequest):
             "summarize lessons, and check understanding."
         )
 
-        # Generate introductory message and topics from the engine
+        # Generate introductory message and topics from the engine with skills parameter
         intro, topics, suggestions = await engine.generate_intro_and_topics(
             context_description=context,
-            extra_instructions=extra_instructions
+            extra_instructions=extra_instructions,
+            role=req.role,
+            skills=req.skills  # Pass skills to generate skills-based suggestions
         )
 
         initial_current_topic = topics[0] if topics else None
@@ -167,14 +250,14 @@ async def start_session(req: StartSessionRequest):
             "title": session_title,
             "topics": topics,
             "current_topic": initial_current_topic,
-            "suggestions": suggestions
+            "suggestions": suggestions  # This will now contain your skills-based suggestions
         }
     except Exception as e:
         print(f"X Error starting session: {e}")
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Could not start session: {str(e)}")
-
+    
 @app.post("/chat")
 async def chat(req: ChatRequest):
     """Handles an ongoing chat conversation."""
@@ -266,21 +349,22 @@ async def get_chat_messages_route(user_id: str = Query(..., description="User ID
         print(f"Error getting chat messages: {e}")
         raise HTTPException(status_code=500, detail="Failed to get chat messages")
 
-@app.post("/get_topic_prompts")
-async def get_topic_prompts(req: TopicPromptRequest):
-    """Generates suggested user prompts for a given topic."""
-    try:
-        prefs = get_user_preferences(req.user_id) if req.user_id else {}
-        context = ""
-        if prefs:
-            context = f"Learning Goal: {prefs.get('learning_goal','')}\nSkills: {', '.join(prefs.get('skills',[]))}\nDifficulty: {prefs.get('difficulty','')}\nRole: {prefs.get('role','')}"
-        prompts = await engine.generate_topic_prompts(req.topic, context_description=context)
-        return {"prompts": prompts}
-    except Exception as e:
-        # Fallback prompts in case of an error
-        return {"prompts": [
-            f"What are the basics of {req.topic}?",
-            f"Can you give me a real-world example of {req.topic}?",
-            f"How do I apply {req.topic} in practice?",
-            f"What are common mistakes in {req.topic}?"
-        ]}
+# @app.post("/get_topic_prompts")
+# async def get_topic_prompts(req: TopicPromptRequest):
+#     """Generates suggested user prompts for a given topic."""
+#     try:
+#         prefs = get_user_preferences(req.user_id) if req.user_id else {}
+#         context = ""
+#         if prefs:
+#             context = f"Learning Goal: {prefs.get('learning_goal','')}\nSkills: {', '.join(prefs.get('skills',[]))}\nDifficulty: {prefs.get('difficulty','')}\nRole: {prefs.get('role','')}"
+#         prompts = await engine.generate_topic_prompts(req.topic, context_description=context)
+#         return {"prompts": prompts}
+#     except Exception as e:
+#         # Fallback prompts in case of an error
+#         return {"prompts": [
+#             f"Can you explain {req.topic}?",
+#             f"What are the key concepts of {req.topic}?",
+#             f"What are the basics of {req.topic}?",
+#             f"Can you give me a real-world example of {req.topic}?",
+#             f"How do I apply {req.topic} in practice?"
+#         ]}

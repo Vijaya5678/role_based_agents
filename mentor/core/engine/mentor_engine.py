@@ -90,11 +90,49 @@ class MentorEngine:
             print(f"Error generating conversation summary: {e}")
             return self.conversation_summaries.get(chat_title, "")
 
+    # async def generate_intro_and_topics(
+    #     self,
+    #     context_description: str,
+    #     extra_instructions: Optional[str] = None,
+    #     role: Optional[str] = None
+    # ) -> Tuple[str, List[str], List[str]]:
+    #     context_description = self._validate_and_sanitize_input(context_description)
+    #     extra_instructions = self._validate_and_sanitize_input(extra_instructions) if extra_instructions else ""
+        
+    #     default_behavior = self.prompts["default_instructions"]
+    #     role_prompt = self.prompts["roles"].get(role, self.prompts["roles"]["default"])
+    #     prompt_template = self.prompts["tasks"]["generate_intro_and_topics"]
+
+    #     prompt_content = prompt_template.format(
+    #         extra_instructions=extra_instructions,
+    #         default_behavior=default_behavior,
+    #         role_prompt=role_prompt,
+    #         context_description=context_description
+    #     )
+    #     messages = [{"role": "user", "content": prompt_content}]
+        
+    #     try:
+    #         llm_raw_response = await self._get_llm_completion(messages, temperature=0.5, max_tokens=800, json_mode=True)
+    #         parsed = json.loads(llm_raw_response)
+    #         greeting = self._sanitize_output(parsed.get("greeting", "Hello!"))
+    #         topics = [self._sanitize_output(t) for t in parsed.get("topics", [])]
+    #         question = self._sanitize_output(parsed.get("concluding_question", "Shall we start?"))
+    #         suggestions = [self._sanitize_output(s) for s in parsed.get("suggestions", [])]
+            
+    #         intro_message = f"{greeting}\n\nHere are the topics we'll explore:\n- " + "\n- ".join(topics) + f"\n\n{question}"
+    #         return (intro_message, topics, suggestions)
+    #     except Exception as e:
+    #         print(f"Error in generate_intro_and_topics: {e}")
+    #         fallback_intro = "Hello! I'm your mentor, ready to guide you.\n\nHere are some topics:\n- Introduction\n- Core Concepts\n- Advanced Topics\n\nShall we start?"
+    #         return fallback_intro, ["Introduction", "Core Concepts", "Advanced Topics"], ["What should I focus on first?", "Can you explain the first topic?", "How does this relate to my goal?", "Can you quiz me on a topic?"]
+
+    # Modified generate_intro_and_topics method
     async def generate_intro_and_topics(
         self,
         context_description: str,
         extra_instructions: Optional[str] = None,
-        role: Optional[str] = None
+        role: Optional[str] = None,
+        skills: Optional[List[str]] = None  # Add skills parameter
     ) -> Tuple[str, List[str], List[str]]:
         context_description = self._validate_and_sanitize_input(context_description)
         extra_instructions = self._validate_and_sanitize_input(extra_instructions) if extra_instructions else ""
@@ -103,11 +141,23 @@ class MentorEngine:
         role_prompt = self.prompts["roles"].get(role, self.prompts["roles"]["default"])
         prompt_template = self.prompts["tasks"]["generate_intro_and_topics"]
 
+        # Create skills-based suggestions
+        skills_based_suggestions = []
+        if skills:
+            skills_str = ", ".join(skills)
+            skills_based_suggestions = [
+                f"Can you explain {skills_str}?",
+                f"What are the key concepts of {skills_str}?",
+                f"What are the basics of {skills_str}?",
+                f"Can you give me a real-world example of {skills_str}?"
+            ]
+
         prompt_content = prompt_template.format(
             extra_instructions=extra_instructions,
             default_behavior=default_behavior,
             role_prompt=role_prompt,
-            context_description=context_description
+            context_description=context_description,
+            skills_suggestions=json.dumps(skills_based_suggestions)  # Pass the suggestions to the prompt
         )
         messages = [{"role": "user", "content": prompt_content}]
         
@@ -117,15 +167,27 @@ class MentorEngine:
             greeting = self._sanitize_output(parsed.get("greeting", "Hello!"))
             topics = [self._sanitize_output(t) for t in parsed.get("topics", [])]
             question = self._sanitize_output(parsed.get("concluding_question", "Shall we start?"))
-            suggestions = [self._sanitize_output(s) for s in parsed.get("suggestions", [])]
+            
+            # Use skills-based suggestions if available, otherwise fall back to LLM suggestions
+            if skills_based_suggestions:
+                suggestions = skills_based_suggestions
+            else:
+                suggestions = [self._sanitize_output(s) for s in parsed.get("suggestions", [])]
             
             intro_message = f"{greeting}\n\nHere are the topics we'll explore:\n- " + "\n- ".join(topics) + f"\n\n{question}"
             return (intro_message, topics, suggestions)
         except Exception as e:
             print(f"Error in generate_intro_and_topics: {e}")
             fallback_intro = "Hello! I'm your mentor, ready to guide you.\n\nHere are some topics:\n- Introduction\n- Core Concepts\n- Advanced Topics\n\nShall we start?"
-            return fallback_intro, ["Introduction", "Core Concepts", "Advanced Topics"], ["What should I focus on first?", "Can you explain the first topic?", "How does this relate to my goal?", "Can you quiz me on a topic?"]
-
+            
+            # Use skills-based suggestions for fallback too
+            if skills_based_suggestions:
+                fallback_suggestions = skills_based_suggestions
+            else:
+                fallback_suggestions = ["What should I focus on first?", "Can you explain the first topic?", "How does this relate to my goal?", "Can you quiz me on a topic?"]
+            
+            return fallback_intro, ["Introduction", "Core Concepts", "Advanced Topics"], fallback_suggestions
+    
     async def chat(
         self,
         chat_history: List[Dict[str, Any]],
@@ -190,29 +252,29 @@ class MentorEngine:
             json_output_instruction=json_output_instruction
         )
     
-    async def generate_topic_prompts(
-        self,
-        topic: str,
-        context_description: str = "",
-        role: Optional[str] = None
-    ) -> list:
-        topic = self._validate_and_sanitize_input(topic)
-        context_description = self._validate_and_sanitize_input(context_description)
+    # async def generate_topic_prompts(
+    #     self,
+    #     topic: str,
+    #     context_description: str = "",
+    #     role: Optional[str] = None
+    # ) -> list:
+    #     topic = self._validate_and_sanitize_input(topic)
+    #     context_description = self._validate_and_sanitize_input(context_description)
         
-        role_prompt = self.prompts["roles"].get(role, self.prompts["roles"]["default"])
-        prompt_template = self.prompts["tasks"]["generate_topic_prompts"]
+    #     role_prompt = self.prompts["roles"].get(role, self.prompts["roles"]["default"])
+    #     prompt_template = self.prompts["tasks"]["generate_topic_prompts"]
         
-        prompt_content = prompt_template.format(
-            topic=topic,
-            role_prompt=role_prompt,
-            context_description=context_description
-        )
-        messages = [{"role": "user", "content": prompt_content}]
+    #     prompt_content = prompt_template.format(
+    #         topic=topic,
+    #         role_prompt=role_prompt,
+    #         context_description=context_description
+    #     )
+    #     messages = [{"role": "user", "content": prompt_content}]
         
-        try:
-            llm_response = await self._get_llm_completion(messages, temperature=0.5, max_tokens=500, json_mode=True)
-            prompts = json.loads(llm_response)
-            return [self._sanitize_output(p) for p in prompts]
-        except Exception as e:
-            print(f"Error in generate_topic_prompts: {e}")
-            return [f"What are the basics of {topic}?", f"Give me an example of {topic}", f"How to apply {topic}?", f"Common mistakes in {topic}?"]
+    #     try:
+    #         llm_response = await self._get_llm_completion(messages, temperature=0.5, max_tokens=500, json_mode=True)
+    #         prompts = json.loads(llm_response)
+    #         return [self._sanitize_output(p) for p in prompts]
+    #     except Exception as e:
+    #         print(f"Error in generate_topic_prompts: {e}")
+    #         return [f"What are the basics of {topic}?", f"Give me an example of {topic}", f"How to apply {topic}?", f"Common mistakes in {topic}?"]

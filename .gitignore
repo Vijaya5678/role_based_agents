@@ -1,1 +1,92 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.pyc
+*.pyd
+*.pyo
+*.egg-info/
+.eggs/
+# For distutils/setuptools
+build/
+dist/
+
+# Editor-specific files
+.idea/                     # PyCharm
+.vscode/                   # VS Code (if you don't want to share settings)
+*.swp                      # Vim swap files
+*~                         # Emacs/Vim temporary files
+.DS_Store                  # macOS specific files
+Thumbs.db                  # Windows thumbnail cache
+
+# Virtual environments
+.venv/
+env/
 venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs and databases
+*.log
+*.sqlite3
+*.db
+
+# OS generated files
+.DS_Store
+.localized
+ehthumbs.db
+Thumbs.db
+
+# Jupyter Notebook files
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Miscellaneous
+.env                       # Environment variables (often sensitive)
+.flaskenv                  # Flask environment variables
+instance/                  # Flask instance folder (often contains databases/configs)
+.python-version            # pyenv
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Development tools and build artifacts
+.mypy_cache/               # MyPy
+.ruff_cache/               # Ruff
+.pytest_cache/             # pytest
+.tox/                      # Tox virtualenvs
+.dmypy.json                # MyPy daemon config
+.pyre/                     # Pyre type checker
+
+# Specific to popular frameworks/tools
+# Django
+*.sublime-project
+*.sublime-workspace
+/media
+/static
+
+# Flask
+instance/
+
+# Celery
+celerybeat-schedule
+
+# Docker
+docker-compose.override.yml # If you have a dev-specific override
+
+# Data files (often large or generated)
+*.csv
+*.json
+*.parquet
+*.pkl
+*.data
+*.h5
+
+# Sensitive data (API keys, etc.)
+# If you have specific files containing secrets, list them here.
+# Example:
+# config/secrets.py
+# .credentials
