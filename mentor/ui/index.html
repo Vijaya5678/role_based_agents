@@ -739,8 +739,8 @@
         let chatHistory = [];
         let userId = "";
         let currentChatTitle = null;
-        let currentTopic = null;
-        let typingTimeout;
+        let isQuizMode = false;
+        let quizState = {};
         const loginBtn = document.getElementById('login-btn');
         const sendBtn = document.getElementById('send-btn');
         const typingIndicator = document.getElementById('typing-indicator');
@@ -842,9 +842,8 @@
 
         function toggleSpeak(text, btnElement) {
             if (SpeechSynthesis.speaking && currentlyPlayingUtterance && currentlyPlayingUtterance.text === text) {
-                SpeechSynthesis.cancel(); // This will trigger the onend event in speak()
+                SpeechSynthesis.cancel(); 
             } else {
-                // Remove 'speaking' class from all other buttons first
                 document.querySelectorAll('.replay-audio-btn.speaking').forEach(b => b.classList.remove('speaking'));
                 
                 speak(text, () => {
@@ -853,9 +852,7 @@
                 btnElement.classList.add('speaking');
             }
         }
-        // --- End of Web Speech API Setup ---
-
-
+        
         function setSendButtonToSend() {
             sendBtn.innerHTML = sendIconSVG;
             sendBtn.disabled = false;
@@ -960,7 +957,7 @@
 
         document.addEventListener('DOMContentLoaded', () => {
              updateSelectedSkillsDisplay();
-             setSendButtonToSend(); // Initialize send button icon
+             setSendButtonToSend();
         });
 
         async function login() {
@@ -983,38 +980,9 @@
                 if (res.ok) {
                     document.getElementById("login-section").classList.add("hidden");
                     mainAppContainer.classList.remove("hidden");
-                    loggedInUserContainer.classList.remove("hidden"); // Show user info
+                    loggedInUserContainer.classList.remove("hidden");
                     showSetupSection();
                     document.getElementById("logged-in-user").textContent = userId;
-                    const pref = localStorage.getItem(`prefs_${userId}`);
-                    if (pref) {
-                        try {
-                            const parsed = JSON.parse(pref);
-                            currentSelectedSkills = new Set(parsed.skills || []);
-                            updateSelectedSkillsDisplay();
-                            document.querySelectorAll('.skill-tag.predefined').forEach(tag => {
-                                if (currentSelectedSkills.has(tag.dataset.skill)) {
-                                    tag.classList.add('selected');
-                                } else {
-                                    tag.classList.remove('selected');
-                                }
-                            });
-                            const hasNonPredefinedSkill = parsed.skills.some(s => !['Python', 'Machine Learning', 'Data Science', 'AI'].includes(s));
-                            if (currentSelectedSkills.has("Others") || hasNonPredefinedSkill) {
-                                othersSkillTag.classList.add('selected');
-                                customSkillInputContainer.classList.remove('hidden');
-                            } else {
-                                othersSkillTag.classList.remove('selected');
-                                customSkillInputContainer.classList.add('hidden');
-                            }
-                            if(parsed.difficulty) {
-                                document.getElementById("difficulty").value = parsed.difficulty;
-                            }
-                            if(parsed.role) {
-                                document.getElementById("role").value = parsed.role;
-                            }
-                        } catch { /* ignore parse errors */ }
-                    }
                     await fetchChats();
                 } else {
                     errorElem.textContent = "Login failed. Check credentials.";
@@ -1033,13 +1001,38 @@
             chatMessagesArea.classList.add("hidden");
             chatHistory = [];
             currentChatTitle = null;
+            isQuizMode = false;
+            quizState = {};
             renderMessages();
-            currentSelectedSkills.clear();
-            updateSelectedSkillsDisplay();
-            document.querySelectorAll('.skill-tag.predefined').forEach(tag => tag.classList.remove('selected'));
-            customSkillInputContainer.classList.add('hidden');
-            customSkillInput.value = "";
         }
+
+        // async function fetchChats() {
+        //     try {
+        //         const res = await fetch(`${API_BASE_URL}/get_chats?user_id=${encodeURIComponent(userId)}`);
+        //         if (!res.ok) throw new Error("Failed to fetch chats. Status: " + res.status);
+        //         const data = await res.json();
+        //         const list = document.getElementById("past-sessions");
+        //         list.innerHTML = "";
+        //         if (!data.chats || data.chats.length === 0) {
+        //             list.innerHTML = '<li style="font-style: italic; color: #666;">No previous sessions</li>';
+        //             return;
+        //         }
+        //         data.chats.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        //         data.chats.forEach(chat => {
+        //             const li = document.createElement("li");
+        //             li.title = chat.title;
+        //             li.onclick = () => loadChat(chat.title);
+        //             li.innerHTML = `
+        //                 <div class="session-title">${chat.title.replace(/_\d{8,}_\w{4}$/, '').replace(/_/g, ' ')}</div>
+        //                 <div class="session-meta">${new Date(chat.created_at).toLocaleString()}</div>
+        //             `;
+        //             list.appendChild(li);
+        //         });
+        //     } catch (e) {
+        //         console.error("Error fetching chats:", e);
+        //         document.getElementById("past-sessions").innerHTML = '<li style="color: red; font-style: italic;">Error loading sessions.</li>';
+        //     }
+        // }
 
         async function fetchChats() {
             try {
@@ -1056,15 +1049,11 @@
                     list.appendChild(li);
                     return;
                 }
-                data.chats.sort((a, b) => {
-                    const dateA = new Date(a.created_at || a[2] || 0);
-                    const dateB = new Date(b.created_at || b[2] || 0);
-                    return dateB - dateA;
-                });
+                data.chats.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                
                 data.chats.forEach(chat => {
-                    const chatId = chat.id || chat[0];
-                    const chatTitle = chat.title || chat[1];
-                    const chatCreatedAt = chat.created_at || chat[2];
+                    const chatTitle = chat.title;
+                    const chatCreatedAt = chat.created_at;
 
                     const li = document.createElement("li");
                     li.title = chatTitle;
@@ -1076,102 +1065,104 @@
 
                     const metaDiv = document.createElement("div");
                     metaDiv.className = "session-meta";
-                    const dt = chatCreatedAt ? new Date(chatCreatedAt) : null;
-                    metaDiv.textContent = dt ? dt.toLocaleString() : "No Date";
+                    const dt = chatCreatedAt ? new Date(chatCreatedAt) : new Date();
+                    metaDiv.textContent = dt.toLocaleString();
 
+                    // Create the snippet div and fetch content for it
                     const snippetDiv = document.createElement("div");
                     snippetDiv.className = "session-snippet";
-                    snippetDiv.textContent = ""; 
+                    snippetDiv.textContent = "Loading preview..."; 
 
                     fetch(`${API_BASE_URL}/get_chat_messages?user_id=${encodeURIComponent(userId)}&title=${encodeURIComponent(chatTitle)}`)
                         .then(res => res.json())
                         .then(data => {
                             if (data.messages && data.messages.length > 0) {
                                 const firstAssistant = data.messages.find(m => m.role === "assistant");
-                                if (firstAssistant) {
+                                if (firstAssistant && firstAssistant.content) {
                                     snippetDiv.textContent = firstAssistant.content.split('\n')[0].slice(0, 60) + "...";
+                                } else {
+                                   snippetDiv.textContent = "No preview available.";
                                 }
                             }
+                        }).catch(() => {
+                             snippetDiv.textContent = "Could not load preview.";
                         });
 
                     li.appendChild(titleDiv);
                     li.appendChild(metaDiv);
-                    li.appendChild(snippetDiv);
+                    li.appendChild(snippetDiv); // Add the snippet div back
                     list.appendChild(li);
                 });
             } catch (e) {
                 console.error("Error fetching chats:", e);
                 const list = document.getElementById("past-sessions");
-                list.innerHTML = '<li style="color: red; font-style: italic;">Error loading sessions. Please check server.</li>';
+                list.innerHTML = '<li style="color: red; font-style: italic;">Error loading sessions.</li>';
             }
         }
-
+        
         async function loadChat(title) {
             try {
                 const res = await fetch(`${API_BASE_URL}/get_chat_messages?user_id=${encodeURIComponent(userId)}&title=${encodeURIComponent(title)}`);
-                if (!res.ok) throw new Error("Failed to load chat messages. Status: " + res.status);
+                if (!res.ok) throw new Error("Failed to load chat messages.");
                 const data = await res.json();
                 chatHistory = data.messages || [];
-                chatHistory.forEach(msg => {
-                    msg.isIntro = false;
-                    msg.isInitialIntro = false;
-                    if (typeof msg.timestamp === 'string') {
-                        msg.timestamp = parseFloat(msg.timestamp);
-                    }
-                });
+                quizState = data.state?.quiz_state || {};
+                isQuizMode = quizState.is_active || false;
+                
                 currentChatTitle = title;
                 renderMessages();
                 setupSection.classList.add("hidden");
                 chatMessagesArea.classList.remove("hidden");
             } catch (e) {
                 console.error("Error loading chat:", e);
-                alert("Failed to load chat: " + title + ". See console for details.");
+                alert("Failed to load chat: " + title);
             }
         }
 
         async function startSession() {
             const skills = Array.from(currentSelectedSkills);
-            const difficulty = document.getElementById("difficulty").value;
-            const role = document.getElementById("role").value;
             if (skills.length === 0) {
                 alert("Please select at least one skill.");
                 return;
             }
             const startBtn = document.querySelector('.setup button');
+            startBtn.disabled = true;
+            startBtn.textContent = "Starting...";
             try {
-                startBtn.disabled = true;
-                startBtn.textContent = "Starting...";
                 const res = await fetch(`${API_BASE_URL}/start_session`, {
                     method: "POST",
                     headers: {"Content-Type": "application/json"},
-                    body: JSON.stringify({ user_id: userId, skills, difficulty, role })
+                    body: JSON.stringify({
+                        user_id: userId,
+                        skills,
+                        difficulty: document.getElementById("difficulty").value,
+                        role: document.getElementById("role").value
+                    })
                 });
-                if (!res.ok) throw new Error("Failed to start session. Status: " + res.status);
+                if (!res.ok) throw new Error("Failed to start session.");
                 const data = await res.json();
-                localStorage.setItem(`prefs_${userId}`, JSON.stringify({ skills, difficulty, role }));
+
                 setupSection.classList.add("hidden");
                 chatMessagesArea.classList.remove("hidden");
                 currentChatTitle = data.title;
+                chatHistory = [];
+                isQuizMode = false;
+                quizState = {};
+
                 const introMessage = {
                     role: "assistant",
                     content: data.intro_and_topics,
                     timestamp: Date.now() / 1000,
-                    isIntro: false,
-                    isInitialIntro: true
                 };
-                chatHistory = [introMessage];
-                displayMessage(introMessage);
-                
-                // speak(data.intro_and_topics); // This line was causing the issue
 
-                if (data.suggestions && data.suggestions.length > 0) {
-                    showPromptButtons(data.suggestions);
-                }
+                chatHistory.push(introMessage);
+                displayMessage(introMessage);
+                showPromptButtons(data.suggestions);
                 
                 await fetchChats();
             } catch (e) {
                 console.error("Error starting session:", e);
-                alert("Failed to start session: " + e.message + ". Check console for details.");
+                alert("Failed to start session. Check console for details.");
             } finally {
                 startBtn.disabled = false;
                 startBtn.textContent = "Start Session";
@@ -1180,9 +1171,7 @@
 
         function renderMessages() {
             chatMessagesDiv.innerHTML = '';
-            chatHistory.forEach(msg => {
-                displayMessage(msg);
-            });
+            chatHistory.forEach(displayMessage);
             chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
         }
         
@@ -1192,37 +1181,22 @@
 
             const iconDiv = document.createElement('div');
             iconDiv.className = 'message-icon';
-            if (messageObj.role === 'user') {
-                iconDiv.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>`;
-            } else { 
-                iconDiv.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#343a40"><path d="M12 3L1 9l4 2.18v6.32l7 3.51 7-3.51v-6.32L23 9l-11-6zm-7 8.18L12 15l7-3.82L12 7.36 5 11.18zM12 16.5l-4-2v-3.5l4 2 4-2v3.5l-4 2z"/></svg>`;
-            }
+            iconDiv.innerHTML = messageObj.role === 'user' 
+                ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>`
+                : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#343a40"><path d="M12 3L1 9l4 2.18v6.32l7 3.51 7-3.51v-6.32L23 9l-11-6zm-7 8.18L12 15l7-3.82L12 7.36 5 11.18zM12 16.5l-4-2v-3.5l4 2 4-2v3.5l-4 2z"/></svg>`;
 
             const bubbleDiv = document.createElement('div');
             bubbleDiv.className = 'message-bubble';
-
-            const htmlContent = converter.makeHtml(messageObj.content);
+            
             const contentDiv = document.createElement('div');
-            contentDiv.innerHTML = htmlContent;
-            
-            contentDiv.querySelectorAll('em').forEach(el => {
-                el.style.color = '#555';
-                el.style.display = 'block';
-                el.style.fontSize = '0.9em';
-                el.style.marginTop = '4px';
-            });
-            
+            contentDiv.innerHTML = converter.makeHtml(messageObj.content);
             bubbleDiv.appendChild(contentDiv);
 
             const bubbleFooter = document.createElement('div');
             bubbleFooter.className = 'message-bubble-footer';
-
-            const timeSpan = document.createElement('time');
             const date = messageObj.timestamp ? new Date(messageObj.timestamp * 1000) : new Date();
-            timeSpan.textContent = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            
-            bubbleFooter.appendChild(timeSpan);
-            
+            bubbleFooter.innerHTML = `<time>${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time>`;
+
             if (messageObj.role === 'assistant') {
                 const replayBtn = document.createElement('button');
                 replayBtn.className = 'replay-audio-btn';
@@ -1233,27 +1207,24 @@
             }
             
             bubbleDiv.appendChild(bubbleFooter);
-
             messageDiv.appendChild(iconDiv);
             messageDiv.appendChild(bubbleDiv);
-
             chatMessagesDiv.appendChild(messageDiv);
             chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
         }
 
-        async function sendMessage() {
-            const messageText = userInput.value.trim();
-            if (messageText === '') return;
-            if (!userId || !currentChatTitle) {
-                alert("Please start or load a session first.");
+        async function sendMessage(messageTextOverride) {
+            const messageText = messageTextOverride || userInput.value.trim();
+            if (!messageText || !userId || !currentChatTitle) return;
+
+            if (messageText.toLowerCase() === 'quiz me!') {
+                userInput.value = '';
+                userInput.style.height = 'auto';
+                startQuiz();
                 return;
             }
 
-            const userMessageObject = {
-                role: "user",
-                content: messageText,
-                timestamp: Date.now() / 1000
-            };
+            const userMessageObject = { role: "user", content: messageText, timestamp: Date.now() / 1000 };
             displayMessage(userMessageObject);
             chatHistory.push(userMessageObject);
             userInput.value = '';
@@ -1270,51 +1241,108 @@
                     body: JSON.stringify({
                         user_id: userId,
                         chat_title: currentChatTitle,
-                        chat_history: chatHistory
+                        chat_history: chatHistory,
+                        is_quiz_mode: isQuizMode,
+                        quiz_state: quizState
                     })
                 });
                 const data = await response.json();
-                if (response.ok) {
-                    const mentorMessageObject = {
-                        role: "assistant",
-                        content: data.reply,
-                        timestamp: Date.now() / 1000,
-                    };
-                    displayMessage(mentorMessageObject);
-                    chatHistory.push(mentorMessageObject);
-                    
-                    // speak(data.reply); // This line was causing the issue
-                    
-                    if (data.suggestions && Array.isArray(data.suggestions) && data.suggestions.length > 0) {
-                        showPromptButtons(data.suggestions);
-                    }
-
-                } else {
-                    let errorMessage = data.detail || `Server responded with status ${response.status}.`;
-                    displayMessage({ role: 'assistant', content: `Error: ${errorMessage}`, timestamp: Date.now() / 1000 });
-                }
+                response.ok ? handleBackendResponse(data) : displayMessage({ role: 'assistant', content: `Error: ${data.detail}`, timestamp: Date.now() / 1000 });
             } catch (error) {
                 console.error('Error sending message:', error);
-                displayMessage({ role: 'assistant', content: 'Failed to get a response from the mentor. Please try again.', timestamp: Date.now() / 1000 });
+                displayMessage({ role: 'assistant', content: 'Failed to get a response. Please try again.', timestamp: Date.now() / 1000 });
             } finally {
                 setSendButtonToSend();
                 typingIndicator.classList.add('hidden');
             }
         }
 
+        async function startQuiz() {
+            const userMessage = { role: 'user', content: 'Quiz me!', timestamp: Date.now() / 1000 };
+            displayMessage(userMessage);
+            chatHistory.push(userMessage);
+
+            setSendButtonToLoading();
+            typingIndicator.classList.remove('hidden');
+            document.getElementById('suggestion-buttons-container').innerHTML = ''; 
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/start_quiz`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId, chat_title: currentChatTitle, chat_history: chatHistory })
+                });
+                const data = await response.json();
+                response.ok ? handleBackendResponse(data) : displayMessage({ role: 'assistant', content: `Error starting quiz: ${data.detail}`, timestamp: Date.now() / 1000 });
+            } catch (error) {
+                console.error('Error starting quiz:', error);
+                displayMessage({ role: 'assistant', content: 'Failed to start the quiz. Please try again.', timestamp: Date.now() / 1000 });
+            } finally {
+                setSendButtonToSend();
+                typingIndicator.classList.add('hidden');
+            }
+        }
+
+        async function submitQuizAnswer(selectedOption) {
+            const userMessage = { role: 'user', content: selectedOption, timestamp: Date.now() / 1000 };
+            displayMessage(userMessage);
+            chatHistory.push(userMessage);
+
+            setSendButtonToLoading();
+            typingIndicator.classList.remove('hidden');
+            document.getElementById('suggestion-buttons-container').innerHTML = '';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/quiz_answer`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        chat_title: currentChatTitle,
+                        chat_history: chatHistory,
+                        selected_option: selectedOption,
+                        current_question_number: quizState.current_question || 1
+                    })
+                });
+                const data = await response.json();
+                response.ok ? handleBackendResponse(data) : displayMessage({ role: 'assistant', content: `Error processing answer: ${data.detail}`, timestamp: Date.now() / 1000 });
+            } catch (error) {
+                console.error('Error submitting answer:', error);
+                displayMessage({ role: 'assistant', content: 'Failed to process your answer. Please try again.', timestamp: Date.now() / 1000 });
+            } finally {
+                setSendButtonToSend();
+                typingIndicator.classList.add('hidden');
+            }
+        }
+
+        function handleBackendResponse(data) {
+            const mentorMessageObject = { role: "assistant", content: data.reply, timestamp: Date.now() / 1000 };
+            displayMessage(mentorMessageObject);
+            chatHistory.push(mentorMessageObject);
+            
+            isQuizMode = data.is_quiz_mode || false;
+            quizState = data.quiz_state || {};
+            
+            if (data.suggestions && Array.isArray(data.suggestions)) {
+                showPromptButtons(data.suggestions);
+            }
+        }
+
         function showPromptButtons(prompts) {
-            let container = document.getElementById('suggestion-buttons-container');
+            const container = document.getElementById('suggestion-buttons-container');
             container.innerHTML = '';
-            if(!prompts) return;
+            if (!prompts) return;
+
             prompts.forEach(prompt => {
                 const btn = document.createElement('button');
                 btn.textContent = prompt;
                 btn.className = 'suggestion-btn';
-                btn.onclick = () => {
-                    document.getElementById('user-input').value = prompt;
-                    sendMessage();
-                    container.innerHTML = '';
-                };
+                
+                if (isQuizMode && quizState.is_active && /^[A-D]\)/.test(prompt)) {
+                     btn.onclick = () => submitQuizAnswer(prompt);
+                } else {
+                    btn.onclick = () => sendMessage(prompt);
+                }
                 container.appendChild(btn);
             });
             container.style.display = prompts.length > 0 ? 'flex' : 'none';

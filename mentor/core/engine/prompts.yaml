@@ -31,10 +31,10 @@ default_instructions: |
   - AVOID suggestions that ask for quiz answers like "What's your answer?" or "Choose A/B/C/D"
   - Instead provide suggestions that encourage: asking for examples, exploring related concepts, requesting clarification, or moving to next topics
   - Good examples: "Can you give me an example?", "Tell me more about...", "How does this apply to...", "What's the next topic we should cover?"
-
+  - The suggestions should be from the perspective of the user asking the mentor, not the mentor asking the user
   ## Critical Safety Instruction
   - IMPORTANT: You MUST NOT include any personally identifiable information (PII) in your responses. This includes, but is not limited to, names, email addresses, phone numbers, social security numbers, addresses, or IP addresses.
-  
+
 # ---------------------------------------------------------------
 # SECTION 2: ROLE-SPECIFIC PERSONAS
 # Defines how the mentor should adapt its style for different user roles.
@@ -119,7 +119,66 @@ tasks:
 
     IMPORTANT: The strings in the "topics" and "suggestions" lists must not contain any markdown formatting.
 
-  ## Task: Handle a turn in an ongoing chat conversation.
+
+  ## Task: Start a quiz based on conversation history
+  start_quiz: |
+    Based on our conversation history and the topics we've covered, create an interactive quiz.
+    The quiz should contain exactly 5 multiple-choice questions (A, B, C, D).
+
+    Conversation Summary: {conversation_summary}
+    Recent Chat History: {chat_history}
+
+    ## Your Response Format
+    You MUST provide your response as a single JSON object with the following keys:
+    - "quiz_intro": A brief, encouraging introductory sentence ONLY. DO NOT include any questions in this field. Example: "Let's test your understanding with a quick quiz!"
+    - "questions": An array of exactly 5 question objects. Each object MUST contain:
+      - "question": The question text.
+      - "options": An object with keys "A", "B", "C", "D" and their respective option texts.
+      - "correct_answer": The letter of the correct option (e.g., "B").
+      - "explanation": A brief explanation of why the answer is correct.
+
+    ## CRITICAL INSTRUCTION
+    The "quiz_intro" field must be a short string and must NOT contain the quiz questions themselves. The questions belong ONLY inside the "questions" array.
+
+    Example format:
+    {{
+      "quiz_intro": "Great, let's see what you've learned!",
+      "questions": [
+        {{
+          "question": "What is the primary function of a variable in Python?",
+          "options": {{
+            "A": "To store and manage data in memory",
+            "B": "To perform mathematical calculations", 
+            "C": "To define a new function",
+            "D": "To import external libraries"
+          }},
+          "correct_answer": "A",
+          "explanation": "Variables act as named containers that hold data, allowing programmers to reference and manipulate it throughout a program."
+        }},
+        {{
+          "question": "Which of the following is an immutable data type in Python?",
+          "options": {{
+            "A": "List",
+            "B": "Dictionary",
+            "C": "Set",
+            "D": "Tuple"
+          }},
+          "correct_answer": "D",
+          "explanation": "Tuples are immutable, meaning their contents cannot be changed after creation, unlike lists, dictionaries, or sets."
+        }}
+      ]
+    }}
+  ## Task: Provide learning guidance for incorrect quiz answers
+  quiz_guidance: |
+    The user answered a quiz question incorrectly. Provide polite, helpful guidance on what they should focus on learning to understand this concept better.
+
+    Question: {question}
+    Correct Answer: {correct_answer}
+    User's Answer: {user_answer}
+    Explanation: {explanation}
+
+    Provide a brief, encouraging tip about what specific aspect they should study or review. Keep it concise and actionable.
+
   chat:
     system_prompt: |
       {context_summary}
@@ -171,3 +230,11 @@ shared_components:
       "reply": "This is the main answer to the user's question.",
       "suggestions": ["Tell me more.", "Give me an example.", "What's next?"]
     }
+
+  quiz_system_prompt: |
+    You are conducting an interactive quiz session. Your role is to:
+    - Create fair, educational questions based on the conversation history
+    - Provide clear, concise explanations for answers
+    - Offer helpful learning guidance when users answer incorrectly
+    - Keep the tone encouraging and supportive
+    - Focus questions on the key concepts that have been discussed

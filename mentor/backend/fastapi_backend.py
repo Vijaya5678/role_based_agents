@@ -6,7 +6,7 @@ import uuid
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 # Adjusting system path to locate necessary modules
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
@@ -59,10 +59,10 @@ class ChatMessage(BaseModel):
     timestamp: Optional[float] = None
     audio_url: Optional[str] = None
 
-class ChatRequest(BaseModel):
-    user_id: str
-    chat_title: str
-    chat_history: List[ChatMessage]
+# class ChatRequest(BaseModel):
+#     user_id: str
+#     chat_title: str
+#     chat_history: List[ChatMessage]
 
 class StartSessionRequest(BaseModel):
     user_id: str
@@ -74,6 +74,26 @@ class StartSessionRequest(BaseModel):
 class TopicPromptRequest(BaseModel):
     topic: str
     user_id: Optional[str] = None
+
+class QuizRequest(BaseModel):
+    user_id: str
+    chat_title: str
+    chat_history: List[ChatMessage]
+
+class QuizAnswerRequest(BaseModel):
+    user_id: str
+    chat_title: str
+    chat_history: List[ChatMessage]
+    selected_option: str  # A, B, C, or D
+    current_question_number: int
+
+# Update your existing ChatRequest model to include quiz state
+class ChatRequest(BaseModel):
+    user_id: str
+    chat_title: str
+    chat_history: List[ChatMessage]
+    is_quiz_mode: Optional[bool] = False
+    quiz_state: Optional[dict] = None
 
 # --- API Endpoints ---
 
@@ -258,6 +278,58 @@ async def start_session(req: StartSessionRequest):
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Could not start session: {str(e)}")
     
+# @app.post("/chat")
+# async def chat(
+#     self,
+#     chat_history: List[Dict[str, Any]],
+#     user_id: str,
+#     chat_title: str,
+#     learning_goal: Optional[str],
+#     skills: List[str],
+#     difficulty: str,
+#     role: str,
+#     mentor_topics: Optional[List[str]] = None,
+#     current_topic: Optional[str] = None,
+#     completed_topics: Optional[List[str]] = None,
+#     is_quiz_mode: bool = False,
+#     quiz_state: Optional[dict] = None,
+# ) -> Tuple[str, List[str], Optional[dict]]:
+#     if not chat_history:
+#         return "Please start the conversation with a message.", [], None
+
+#     summary = await self._get_conversation_summary(chat_title, chat_history)
+#     recent_history = chat_history[-6:]
+
+#     system_prompt = self._build_system_context(learning_goal, skills, difficulty, role, mentor_topics, current_topic, completed_topics)
+#     messages_for_api = [{"role": "system", "content": system_prompt}]
+    
+#     if summary:
+#         user_prompt_wrapper = self.prompts["tasks"]["chat"]["user_prompt_wrapper"]
+#         messages_for_api.append({"role": "system", "content": user_prompt_wrapper.format(summary=summary)})
+
+#     messages_for_api.extend(recent_history)
+
+#     try:
+#         llm_raw_response = await self._get_llm_completion(messages_for_api, temperature=0.7, max_tokens=1500, json_mode=True)
+#         parsed = json.loads(llm_raw_response)
+#         reply = self._sanitize_output(parsed.get("reply", "I'm sorry, I couldn't form a proper reply."))
+#         suggestions = [self._sanitize_output(s) for s in parsed.get("suggestions", [])]
+        
+#         # Add "Quiz me!" suggestion after 5 conversations (count user messages only)
+#         user_message_count = len([msg for msg in chat_history if msg.get("role") == "user"])
+#         if user_message_count >= 5 and not is_quiz_mode:
+#             # Check if quiz suggestion is not already present
+#             if not any("quiz" in s.lower() for s in suggestions):
+#                 suggestions.append("Quiz me!")
+        
+#         return reply, suggestions, quiz_state
+#     except json.JSONDecodeError as e:
+#         print(f"CRITICAL: LLM failed to produce valid JSON. Error: {e}. Response: {llm_raw_response}")
+#         return "I seem to be having trouble formatting my thoughts. Please try rephrasing your question.", [], quiz_state
+#     except Exception as e:
+#         print(f"Error in chat: {e}")
+#         return "I'm sorry, I couldn't understand your question. Could you please rephrase it?", [], quiz_state
+
 @app.post("/chat")
 async def chat(req: ChatRequest):
     """Handles an ongoing chat conversation."""
@@ -275,14 +347,16 @@ async def chat(req: ChatRequest):
         mentor_topics = state.get("mentor_topics", [])
         current_topic = state.get("current_topic")
         completed_topics = state.get("completed_topics", [])
+        quiz_state = state.get("quiz_state", {}) if req.quiz_state is None else req.quiz_state
+        
         prefs = get_user_preferences(req.user_id)
         learning_goal = prefs.get("learning_goal")
         skills = prefs.get("skills", [])
         difficulty = prefs.get("difficulty", "medium")
         role = prefs.get("role", "student")
 
-        # Pass all necessary context, including chat_title, to the engine
-        reply, suggestions = await engine.chat(
+        # Pass all necessary context, including quiz information, to the engine
+        reply, suggestions, updated_quiz_state = await engine.chat(
             chat_history=[msg.dict() for msg in req.chat_history],
             user_id=req.user_id,
             chat_title=req.chat_title,
@@ -292,7 +366,9 @@ async def chat(req: ChatRequest):
             role=role,
             mentor_topics=mentor_topics,
             current_topic=current_topic,
-            completed_topics=completed_topics
+            completed_topics=completed_topics,
+            is_quiz_mode=req.is_quiz_mode or False,
+            quiz_state=quiz_state
         )
 
         # Create the new assistant message object
@@ -305,23 +381,39 @@ async def chat(req: ChatRequest):
 
         # Update and save the chat history
         updated_history = req.chat_history + [mentor_message]
+        
+        # Update state if quiz state changed
+        if updated_quiz_state is not None:
+            state["quiz_state"] = updated_quiz_state
+        
         save_chat(
             user_id=req.user_id,
             title=req.chat_title,
             messages_json=json.dumps([msg.dict() for msg in updated_history]),
             mentor_topics=mentor_topics,
             current_topic=current_topic,
-            completed_topics=completed_topics
+            completed_topics=completed_topics,
+            quiz_state=state.get("quiz_state")  # Save quiz state if present
         )
 
         # Return both reply and suggestions to the frontend
-        return {"reply": reply, "suggestions": suggestions}
+        response = {
+            "reply": reply, 
+            "suggestions": suggestions
+        }
+        
+        # Include quiz state if present
+        if updated_quiz_state:
+            response["quiz_state"] = updated_quiz_state
+            response["is_quiz_mode"] = updated_quiz_state.get("is_active", False)
+        
+        return response
     except HTTPException:
         raise
     except Exception as e:
         print(f"Error in chat: {e}")
         raise HTTPException(status_code=500, detail="Chat failed")
-
+    
 @app.get("/get_chats")
 async def list_chats(user_id: str = Query(..., description="User ID")):
     """Retrieves a list of all past chat sessions for a user."""
@@ -368,3 +460,147 @@ async def get_chat_messages_route(user_id: str = Query(..., description="User ID
 #             f"Can you give me a real-world example of {req.topic}?",
 #             f"How do I apply {req.topic} in practice?"
 #         ]}
+
+
+# Add these new endpoints to your FastAPI app
+
+@app.post("/start_quiz")
+async def start_quiz(req: QuizRequest):
+    """Starts a quiz based on conversation history."""
+    print(f"-> /start_quiz called by user: {req.user_id} for chat: '{req.chat_title}'")
+    try:
+        # Get user preferences and chat state
+        result = get_chat_messages_with_state(req.user_id, req.chat_title)
+        if result is None or not isinstance(result, tuple) or len(result) != 2:
+            chat_messages, state = [], {}
+        else:
+            chat_messages, state = result
+
+        mentor_topics = state.get("mentor_topics", [])
+        prefs = get_user_preferences(req.user_id)
+        learning_goal = prefs.get("learning_goal")
+        skills = prefs.get("skills", [])
+        difficulty = prefs.get("difficulty", "medium")
+        role = prefs.get("role", "student")
+
+        # Start the quiz
+        reply, suggestions, quiz_state = await engine.start_quiz(
+            chat_history=[msg.dict() for msg in req.chat_history],
+            user_id=req.user_id,
+            chat_title=req.chat_title,
+            learning_goal=learning_goal,
+            skills=skills,
+            difficulty=difficulty,
+            role=role,
+            mentor_topics=mentor_topics
+        )
+
+        # Create quiz message
+        quiz_message = ChatMessage(
+            role="assistant",
+            content=reply,
+            timestamp=datetime.datetime.now().timestamp(),
+            audio_url=None
+        )
+
+        # Update chat history with quiz state
+        updated_history = req.chat_history + [quiz_message]
+        
+        # Save with quiz state
+        extended_state = state.copy()
+        extended_state["quiz_state"] = quiz_state
+        
+        save_chat(
+            user_id=req.user_id,
+            title=req.chat_title,
+            messages_json=json.dumps([msg.dict() for msg in updated_history]),
+            mentor_topics=mentor_topics,
+            current_topic=state.get("current_topic"),
+            completed_topics=state.get("completed_topics", []),
+            quiz_state=quiz_state  # You may need to modify save_chat to handle this
+        )
+
+        return {
+            "reply": reply,
+            "suggestions": suggestions,
+            "quiz_state": quiz_state,
+            "is_quiz_mode": True
+        }
+    except Exception as e:
+        print(f"Error starting quiz: {e}")
+        raise HTTPException(status_code=500, detail="Failed to start quiz")
+
+@app.post("/quiz_answer")
+async def quiz_answer(req: QuizAnswerRequest):
+    """Handles quiz answer evaluation."""
+    print(f"-> /quiz_answer called by user: {req.user_id}")
+    try:
+        # Get current state
+        result = get_chat_messages_with_state(req.user_id, req.chat_title)
+        if result is None or not isinstance(result, tuple) or len(result) != 2:
+            raise HTTPException(status_code=404, detail="Chat not found")
+        
+        chat_messages, state = result
+        quiz_state = state.get("quiz_state", {})
+        
+        if not quiz_state.get("is_active", False):
+            raise HTTPException(status_code=400, detail="No active quiz found")
+
+        # Get user preferences
+        mentor_topics = state.get("mentor_topics", [])
+        prefs = get_user_preferences(req.user_id)
+        learning_goal = prefs.get("learning_goal")
+        skills = prefs.get("skills", [])
+        difficulty = prefs.get("difficulty", "medium")
+        role = prefs.get("role", "student")
+
+        # Handle the quiz answer
+        reply, suggestions, updated_quiz_state = await engine.handle_quiz_answer(
+            chat_history=[msg.dict() for msg in req.chat_history],
+            selected_option=req.selected_option,
+            quiz_state=quiz_state,
+            user_id=req.user_id,
+            chat_title=req.chat_title,
+            learning_goal=learning_goal,
+            skills=skills,
+            difficulty=difficulty,
+            role=role,
+            mentor_topics=mentor_topics
+        )
+
+        # Create response message
+        response_message = ChatMessage(
+            role="assistant",
+            content=reply,
+            timestamp=datetime.datetime.now().timestamp(),
+            audio_url=None
+        )
+
+        # Update chat history
+        updated_history = req.chat_history + [response_message]
+        
+        # Update state
+        extended_state = state.copy()
+        extended_state["quiz_state"] = updated_quiz_state
+        
+        save_chat(
+            user_id=req.user_id,
+            title=req.chat_title,
+            messages_json=json.dumps([msg.dict() for msg in updated_history]),
+            mentor_topics=mentor_topics,
+            current_topic=state.get("current_topic"),
+            completed_topics=state.get("completed_topics", []),
+            quiz_state=updated_quiz_state
+        )
+
+        return {
+            "reply": reply,
+            "suggestions": suggestions,
+            "quiz_state": updated_quiz_state,
+            "is_quiz_mode": updated_quiz_state.get("is_active", False)
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error handling quiz answer: {e}")
+        raise HTTPException(status_code=500, detail="Failed to process quiz answer")

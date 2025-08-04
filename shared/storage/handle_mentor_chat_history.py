@@ -28,6 +28,7 @@ def init_db():
                 mentor_topics TEXT,         -- JSON string of mentor's suggested topics
                 current_topic TEXT,         -- Current topic being discussed
                 completed_topics TEXT,      -- JSON string of completed topics
+                quiz_state TEXT,            -- <-- MODIFIED: Added column for quiz state (as JSON string)
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(user_id, title) -- Ensures a user has unique chat titles
             )
@@ -46,24 +47,36 @@ def init_db():
         conn.commit()
 
 
-def save_chat(user_id: str, title: str, messages_json: str, mentor_topics: Optional[List[str]] = None, current_topic: Optional[str] = None, completed_topics: Optional[List[str]] = None):
+# <-- MODIFIED: Function signature and logic updated to handle quiz_state
+def save_chat(
+    user_id: str,
+    title: str,
+    messages_json: str,
+    mentor_topics: Optional[List[str]] = None,
+    current_topic: Optional[str] = None,
+    completed_topics: Optional[List[str]] = None,
+    quiz_state: Optional[Dict[str, Any]] = None  # Added quiz_state parameter
+):
     with _get_db_connection() as conn:
         cursor = conn.cursor()
         mentor_topics_json = json.dumps(mentor_topics) if mentor_topics is not None else None
         completed_topics_json = json.dumps(completed_topics) if completed_topics is not None else None
+        quiz_state_json = json.dumps(quiz_state) if quiz_state is not None else None # Serialize quiz state
 
+        # Updated query to include the new quiz_state column
         cursor.execute('''
-            INSERT OR REPLACE INTO chats (user_id, title, messages_json, mentor_topics, current_topic, completed_topics)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (user_id, title, messages_json, mentor_topics_json, current_topic, completed_topics_json))
+            INSERT OR REPLACE INTO chats (user_id, title, messages_json, mentor_topics, current_topic, completed_topics, quiz_state)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (user_id, title, messages_json, mentor_topics_json, current_topic, completed_topics_json, quiz_state_json))
         conn.commit()
 
 def get_chats(user_id: str):
     with _get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT id, title, created_at FROM chats WHERE user_id = ?", (user_id,))
-        return cursor.fetchall()
+        return [dict(row) for row in cursor.fetchall()]
 
+# <-- MODIFIED: Function logic updated to retrieve and return quiz_state
 def get_chat_messages_with_state(user_id: str, chat_title: str) -> Optional[Tuple[List[Dict[str, Any]], Dict[str, Any]]]:
     """
     Retrieves chat messages and the mentor session state for a given user and chat title.
@@ -71,31 +84,31 @@ def get_chat_messages_with_state(user_id: str, chat_title: str) -> Optional[Tupl
     """
     with _get_db_connection() as conn:
         cursor = conn.cursor()
+        # Updated query to select the new quiz_state column
         cursor.execute('''
-            SELECT messages_json, mentor_topics, current_topic, completed_topics
+            SELECT messages_json, mentor_topics, current_topic, completed_topics, quiz_state
             FROM chats
             WHERE user_id = ? AND title = ?
         ''', (user_id, chat_title))
         row = cursor.fetchone()
 
         if row:
-            # Parse the JSON string of messages into a list of dictionaries
             messages = json.loads(row["messages_json"]) if row["messages_json"] else []
-            
-            # Prepare the state dictionary
             mentor_topics = json.loads(row["mentor_topics"]) if row["mentor_topics"] else []
             completed_topics = json.loads(row["completed_topics"]) if row["completed_topics"] else []
+            quiz_state = json.loads(row["quiz_state"]) if row["quiz_state"] else {} # Deserialize quiz state
+
+            # Add quiz_state to the returned state dictionary
             state = {
                 "mentor_topics": mentor_topics,
                 "current_topic": row["current_topic"],
-                "completed_topics": completed_topics
+                "completed_topics": completed_topics,
+                "quiz_state": quiz_state
             }
             
-            # Return a tuple of (messages, state)
             return messages, state
             
-    # If no row is found, return None
-    return None
+    return None, {} # Return empty state if no chat is found
 
 def save_user_preferences(user_id: str, learning_goal: Optional[str], skills: List[str], difficulty: str, role: str):
     with _get_db_connection() as conn:
