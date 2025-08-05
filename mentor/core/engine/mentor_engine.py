@@ -149,7 +149,7 @@ class MentorEngine:
             total = quiz_state["total_questions"]
             percentage = (score / total) * 100 if total > 0 else 0
             reply = (
-                f"🎉 **Quiz Complete!**\n\n"
+                f"**Quiz Complete!**\n\n"
                 f"You scored {score}/{total} ({percentage:.0f}%).\n\n"
                 "You can now continue exploring this topic or move to the next one."
             )
@@ -162,6 +162,10 @@ class MentorEngine:
         
         reply = f"**Question {next_q_num}/{quiz_state['total_questions']}**\n{question_text}"
         
+        # Only add disclaimer for questions after the first one (since first one gets it in start_quiz)
+        if next_q_num > 1:
+            reply += "\n\n(Use the buttons below to answer. Type any message to exit and return to learning.)"
+        
         suggestions = [
             f"A) {options.get('A', 'Option A')}",
             f"B) {options.get('B', 'Option B')}",
@@ -172,30 +176,49 @@ class MentorEngine:
         print(f"ENGINE: Serving Q{next_q_num}. State: {quiz_state}")
         return reply, suggestions, quiz_state
 
+
     async def chat(
-        self,
-        chat_history: List[Dict[str, Any]],
-        user_id: str,
-        chat_title: str,
-        learning_goal: Optional[str],
-        skills: List[str],
-        difficulty: str,
-        role: str,
-        mentor_topics: Optional[List[str]] = None,
-        current_topic: Optional[str] = None,
-        completed_topics: Optional[List[str]] = None,
-        is_quiz_mode: bool = False,
-        quiz_state: Optional[dict] = None,
-    ) -> Tuple[str, List[str], Optional[dict]]:
+    self,
+    chat_history: List[Dict[str, Any]],
+    user_id: str,
+    chat_title: str,
+    learning_goal: Optional[str],
+    skills: List[str],
+    difficulty: str,
+    role: str,
+    mentor_topics: Optional[List[str]] = None,
+    current_topic: Optional[str] = None,
+    completed_topics: Optional[List[str]] = None,
+    is_quiz_mode: bool = False,
+    quiz_state: Optional[dict] = None,
+) -> Tuple[str, List[str], Optional[dict]]:
         if not chat_history:
             return "Please start the conversation with a message.", [], None
 
         last_user_message = chat_history[-1]['content'].strip()
         
-        if is_quiz_mode and quiz_state and quiz_state.get("is_active") and last_user_message == "Next Question":
-            print("ENGINE: User requested next question.")
-            return await self._serve_next_quiz_question(quiz_state)
+        # Check if we're in quiz mode and user typed something other than "Next Question"
+        if is_quiz_mode and quiz_state and quiz_state.get("is_active"):
+            # If user types anything other than "Next Question", exit quiz mode
+            if last_user_message != "Next Question":
+                # Reset quiz state
+                quiz_state = {"is_active": False}
+                
+                # Return to normal learning mode with a message
+                exit_message = "Welcome back to learning! How can I help you continue exploring the topic?"
+                suggestions = [
+                    "Continue with the current topic",
+                    "What's the next topic?",
+                    "Summarize what we've learned so far"
+                ]
+                return exit_message, suggestions, quiz_state
+            
+            # If user clicked "Next Question", serve the next question
+            if last_user_message == "Next Question":
+                print("ENGINE: User requested next question.")
+                return await self._serve_next_quiz_question(quiz_state)
 
+        # Rest of your existing chat logic remains the same...
         summary = await self._get_conversation_summary(chat_title, chat_history)
         recent_history = chat_history[-6:]
 
@@ -251,16 +274,16 @@ class MentorEngine:
         )
     
     async def start_quiz(
-        self,
-        chat_history: List[Dict[str, Any]],
-        user_id: str,
-        chat_title: str,
-        learning_goal: Optional[str],
-        skills: List[str],
-        difficulty: str,
-        role: str,
-        mentor_topics: Optional[List[str]] = None,
-    ) -> Tuple[str, List[str], dict]:
+    self,
+    chat_history: List[Dict[str, Any]],
+    user_id: str,
+    chat_title: str,
+    learning_goal: Optional[str],
+    skills: List[str],
+    difficulty: str,
+    role: str,
+    mentor_topics: Optional[List[str]] = None,
+) -> Tuple[str, List[str], dict]:
         """Starts a quiz and returns ONLY the first question."""
         print("ENGINE: Starting quiz...")
         summary = await self._get_conversation_summary(chat_title, chat_history)
@@ -291,14 +314,21 @@ class MentorEngine:
                 "is_active": True
             }
             
-            # Use the helper to serve the first question
-            return await self._serve_next_quiz_question(quiz_state)
+            # Get the first question
+            question_reply, question_suggestions, quiz_state = await self._serve_next_quiz_question(quiz_state)
+            
+            # Add disclaimer to the reply
+            disclaimer = "\n\n(Use the buttons below to answer. Type any message to return to learning.)"
+            final_reply = question_reply + disclaimer
+            
+            return final_reply, question_suggestions, quiz_state
             
         except Exception as e:
             print(f"Error starting quiz: {e}")
             import traceback
             traceback.print_exc()
             return "I'm having trouble creating a quiz right now. Let's continue our regular conversation.", [], {}
+
 
     async def handle_quiz_answer(
         self,

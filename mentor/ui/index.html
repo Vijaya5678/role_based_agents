@@ -710,7 +710,7 @@
                     </div>
                     
                     
-                    <button onclick="startSession()" class="btn btn-primary" style="width: 100%;">Start Session</button>
+                    <button onclick="startSession()" class="btn btn-primary" style="width: 100%;">Start Learning</button>
                 </div>
             </div>
 
@@ -1099,7 +1099,7 @@
                 list.innerHTML = '<li style="color: red; font-style: italic;">Error loading sessions.</li>';
             }
         }
-        
+
         async function loadChat(title) {
             try {
                 const res = await fetch(`${API_BASE_URL}/get_chat_messages?user_id=${encodeURIComponent(userId)}&title=${encodeURIComponent(title)}`);
