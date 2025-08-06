@@ -1,5 +1,5 @@
 
-name: workflow on push in dev branch
+name: workflow on push in main branch
  
 on: 
   push:
