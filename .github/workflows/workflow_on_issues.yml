@@ -1,4 +1,4 @@
-name: workflow on push
+name: workflow on issues
  
 on: [issues]
  
